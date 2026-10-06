@@ -1,0 +1,11 @@
+# Libraries for the project. Install with:  pip install -r requirements.txt
+# PyTorch (torch, torchvision) is NOT listed here on purpose. It must be
+# installed separately with the GPU (CUDA) build, see the setup steps.
+numpy
+pandas
+pillow
+scikit-learn
+scipy
+matplotlib
+imagehash
+tqdm
