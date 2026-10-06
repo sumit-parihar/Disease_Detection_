@@ -33,6 +33,11 @@ DATA_DIR = PROJECT_ROOT / "data"
 PLANTVILLAGE_DIR = DATA_DIR / "plantvillage" / "raw" / "color"   # source
 PP2020_DIR = DATA_DIR / "pp2020"                                  # target
 PP2020_CSV = PP2020_DIR / "train.csv"                             # target labels
+PP2020_IMAGES_DIR = PP2020_DIR / "images"                         # Train_*.jpg only
+# Where you unzip the Kaggle download exactly as it comes (train.csv, test.csv,
+# sample_submission.csv, images/). prepare_pp2020.py reads from here and never
+# changes it. PP2020_DIR above is the cleaned copy used by the experiment.
+PP2020_RAW_DIR = DATA_DIR / "pp2020_raw"
 
 # Generated outputs (these are created by our scripts, not downloaded).
 MANIFEST_DIR = PROJECT_ROOT / "manifests"   # audit results, file hashes

@@ -43,7 +43,13 @@ def main():
     ensure_git()
     DEST.parent.mkdir(parents=True, exist_ok=True)
 
-    if not DEST.exists():
+    if not (DEST / ".git").exists():
+        if DEST.exists():
+            # The folder exists but is not a clone. If it holds only empty
+            # folders, remove it so git can clone into a clean place.
+            if any(p.is_file() for p in DEST.rglob("*")):
+                sys.exit(f"{DEST} already has files but is not a git clone. Move or delete it, then run again.")
+            shutil.rmtree(DEST)
         run(["git", "clone", "--depth", "1", "--filter=blob:none", "--sparse", REPO, str(DEST)])
 
     patterns = [f"raw/color/{c}/*" for c in CLASSES]
