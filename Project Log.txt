@@ -1,0 +1,1882 @@
+Project Log:
+
+# Project Log
+
+Study: Source-Only Lightweight Failure Prediction for Reliable Apple Foliar Disease Classification under Unseen Field-Domain Shift Source: PlantVillage (healthy / scab / cedar apple rust). Target: Plant Pathology 2020 FGVC7 (labelled train images).
+
+Only things that were actually observed or decided are listed here. Items still open are marked OPEN. Last updated: 2026-10-09 (section 7 added: comparison with paper draft v2)
+
+---
+
+## 1. Decisions made
+
+| #  | Decision                                                                                                                                                                                                                                                           | Status                      |
+| -- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------- |
+| D1 | Framework is PyTorch, with a Python virtual environment (not Conda). Reason: PyTorch uses the GPU on Windows.                                                                                                                                                      | Decided                     |
+| D2 | Paper's classes: healthy, scab, rust. PlantVillage black rot is excluded (no matching target class). PP2020 multiple_diseases is excluded from the primary analysis only after label unblinding.                                                                   | Decided (from paper)        |
+| D3 | Raw data is never edited or deleted. "Removing" an image means adding it to an exclusion list that the split script reads.                                                                                                                                         | Decided                     |
+| D4 | pHash near-duplicate candidate limit is fixed at 5 bits (my choice, not in the paper; behaves exactly like 4, see section 6). Reviewed beyond it: all pairs at distance 6 and all source-target pairs up to 10. Must NOT be changed after seeing any model result. | Locked                      |
+| D5 | Review rule for near-duplicate pairs: `duplicate`, `different`, `unsure`. `unsure` is treated as `duplicate` (both images stay in one split group). The review is done manually by me.                                                                             | Decided                     |
+| D6 | Cross-dataset copies (source image = target image): remove from the SOURCE, keep the target. Only for pairs marked duplicate or unsure.                                                                                                                            | Decided (none found so far) |
+| D7 | Copies inside PlantVillage: keep the whole group together in one split subset. Groups chain (A\~B and B\~C puts A, B, C together).                                                                                                                                 | Decided                     |
+| D8 | Copies inside PP2020 (target): handling not decided.                                                                                                                                                                                                               | OPEN (deferred on purpose)  |
+
+---
+
+## 2. Findings
+
+### F1. Dataset audit, 2026-10-06 (audit_dataset.py)
+
+- 4,371 images audited: 2,550 source, 1,821 target.
+- 0 corrupted files. All images are RGB.
+- All class counts match the paper: source 1,645 / 630 / 275; target 516 / 592 / 622 / 91 (multiple_diseases).
+- Image sizes: source 256 x 256 only; target 1,365 to 2,048 pixels per side. Large resolution gap between the datasets.
+- No exact or near duplicates between source and target (0 cross pairs).
+- No problems found between train.csv and the image folder.
+- Manifest SHA-256: `d0aabb245d6993e840d43ab2cad4f798a3d3360825a7b53e8a69c420b7268b73` (the other PC must produce the same value if its data is identical).
+
+### F2. Exact duplicates inside PlantVillage (7 groups, 14 files)
+
+- All 7 groups are `Apple___healthy`, one label per group.
+- File names end in `RS_HL 6268` to `RS_HL 6274` (7 consecutive photo numbers): the same 7 photos were stored twice under different UUID prefixes.
+- This explains why Git fetched 2,543 objects while the folders hold 2,550 files (identical files are stored once).
+- Action: each pair stays in the same split group (D7).
+
+### F3. Target label conflict in PP2020 (1 exact-duplicate pair)
+
+- `Train_379.jpg` and `Train_1173.jpg` are byte-identical images.
+- `Train_379` is labelled **scab**; `Train_1173` is labelled **multiple_diseases**.
+- Effect: `Train_1173` leaves the primary analysis with the other multiple_diseases images, so the photo is counted once and the primary set stays at 1,730 (516 / 592 / 622).
+- Doubt: the scab label on `Train_379` is now uncertain, because the same photo was also labelled multiple_diseases.
+- **OPEN decision, to be made before the model sees any target image:**&#x20;
+  - Option A: keep `Train_379` as scab and report the conflict (primary set stays 1,730).
+  - Option B: exclude both and report 1,729 images.
+- Needs one sentence in the paper's data section either way. The target dataset size may change if Option B is chosen.
+
+### F4. Near-duplicate candidates (pHash distance <= 5)
+
+- 19 pairs found, 0 across source and target, 0 with different labels. Largest distance found was 4 (nothing at 5).
+- Contact sheets made in `manifests/review/` (4 images).
+- Check done on the sheets (visual inspection + SIFT feature matching on the 256 px panels):&#x20;
+  - Pairs 1-16 (all target/target, distance 0 to 4): same photo. 92-100% of 187-651 matched features agree, median shift about 1 px, scale 1.00. Proposed decision: `duplicate`.
+  - Pairs 17-19 (source/healthy, distance 4): different leaves. Only 0-3 matching features. Proposed decision: `different`. These are false alarms: leaves of similar shape on a plain grey background get close hashes.
+  - Decisions are to be entered by me in `near_duplicate_review.csv`.
+- Consequences:&#x20;
+  - Source side: only the 7 exact-duplicate groups (F2) need grouping; no near-duplicates exist in the source.
+  - Target side: 16 near-duplicate pairs plus the exact pair in F3, so deferred decision D8 now covers 17 pairs. The target set contains repeated photos; if kept, report this and note that errors on repeated photos are correlated.
+  - At distance 4, 7 of 10 pairs were real duplicates (70%). Optional sensitivity check: rerun the audit with a larger limit (for example 8) before the splits. Expect more false alarms in the source.
+
+### F6. Extra review: cross pairs and distance-6 pairs (44 pairs, pair ids 101-144)
+
+- Source of pairs: `phash_sweep.py` (distances 0-10 over all 4,371 images). Pairs per distance: 0:2, 2:7, 4:10, 6:42, 8:157, 10:647 (only even distances occur). Counts grow about 4x per step and the different-label count grows with them, so pairs at 8 and 10 are mostly look-alikes. They were NOT reviewed (state this as a limitation).
+- Checked by eye and by SIFT feature matching on the contact sheets:&#x20;
+  - Cross pairs 101, 102 (source vs target, distances 8 and 10): different images (3 matching points each). No source image needs removal.
+  - Distance-6 pairs: 9 of 42 are the same leaf (21%), 33 are different leaves.&#x20;
+    - Target/target, same photo: 104, 106, 108 (367-441 matching points) -> `duplicate`.
+    - Source, same leaf, different frame or zoom: 103, 105 (scab), 110 (scab), 116 (rust) -> `duplicate`.
+    - Source, same leaf re-posed: 115, 140 (healthy). I marked them `unsure` (lower match confidence); after my own check they are set to `duplicate`.
+    - All other 33 -> `different` (includes pair 130 with different labels).
+  - The real source pairs have neighbouring file numbers (FREC_Scab 3151/3152, 3472/3473, 3361/3365; FREC_C.Rust 0015/0016; RS_HL 6148/6149, 6151/6152): the dataset stores several photos of the same leaf.
+- Consequence: real near-duplicates exist just above the limit of 5, so the source split must also group these 6 source pairs (decisions in `sweep_review.csv` are used by the split script together with the first review). Plan: keep the audit limit at 5 and add the confirmed distance-6 pairs as extra groups, instead of raising the limit and merging 33 unrelated look-alike pairs.
+- Risk that remains: a few same-leaf pairs at distances 8 and 10 may exist unreviewed. This can only inflate in-domain S-test results; it cannot affect the target result, since all cross pairs checked were different.
+
+### F7. Last two unreviewed PP2020 pairs (pair ids 201, 202)
+
+- Both are target/target pairs, same label, at pHash distance 8 and 10.
+- Pair 201 (`Train_1731`, `Train_591`, healthy): same photo, 339 of 344 matched points agree, shift about 3 px. Pair 202 (`Train_1336`, `Train_332`, scab): same leaf, 138 of 144 points agree, camera moved about 10 px. My own check and the manual check agree: both `duplicate`.
+- Deferred target decision D8 now covers 22 within-target pairs: 1 exact pair with a label conflict (F3), 16 near-duplicate pairs (F4), 3 distance-6 pairs and these 2 (F6, F7). None of them touches the source split. Nothing has been removed from the target.
+- Decided: for the split step only the group-aware split is used (D7). The extra ideas (file-number search, post-split leakage count) were dropped.
+
+### F8. Source split made, 2026-10-08 (make_splits.py, seed 42)
+
+- Manifest used: `d0aabb245d6993e840d43ab2cad4f798a3d3360825a7b53e8a69c420b7268b73`.
+- 2,550 source images split, 0 excluded (no source image matches a target image).
+- 2,537 groups: 13 groups of 2 images (26 images: 7 exact SHA-256 copies and 6 same-leaf pairs from `sweep_review.csv`) plus 2,524 single images (2,524 + 13 = 2,537).
+- Subset sizes: s_train 1,276 (50.0%), s_val 255 (10.0%), s_reliability 383 (15.0%), s_calibration 254 (10.0%), s_test 382 (15.0%). Per class: healthy 823 / 164 / 247 / 164 / 247; scab 315 / 63 / 95 / 63 / 94; rust 138 / 28 / 41 / 27 / 41. Every count equals its target.
+- All 3 checks passed (one subset per image, no group split, every duplicate pair together). No notes.
+- Files in `splits/`: `split_assignments.csv` (+ `.sha256`), `groups_multi.csv`, `source_exclusions.csv`, `split_summary.txt`. These must not be edited.
+- Purpose of the five subsets: s_train fits the disease classifier; s_val picks the model and stops training; s_reliability trains the failure head; s_calibration fits temperature scaling and the source-only thresholds; s_test is an untouched in-domain reference.
+
+### F5. Plant Pathology 2020 download contents
+
+- The Kaggle download holds train.csv, test.csv, sample_submission.csv and one `images/` folder that mixes `Train_*` and `Test_*` files.
+- Only the 1,821 labelled `Train_*` images are used. Test images have no public labels, so they cannot be scored. Their names are saved in `manifests/pp2020_excluded_test_files.txt`.
+- The download is done by hand (Kaggle is not reachable by script).
+
+---
+
+## 3. Problems met and how they were fixed
+
+| Problem                                                                                                           | Cause                                                                                                                                                      | Fix                                                                                                                     |
+| ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `fatal: please run from the toplevel directory in non-cone mode` in download_plantvillage.py                      | The empty `data/plantvillage` folder from the structure zip existed, so the script skipped the clone and ran sparse-checkout inside the project's own repo | Script changed to clone unless the folder is already a git clone; it removes a folder that holds only empty directories |
+| `RPC failed; curl 56 Connection was reset`, `early EOF` during clone                                              | Network connection dropped                                                                                                                                 | Cleared the partial folder and retried; second attempt downloaded fully. Counts verified 1,645 / 630 / 275              |
+| `ImportError: DLL load failed while importing pandas_parser: An Application Control policy has blocked this file` | Windows blocked the compiled files of pandas 3.0.6                                                                                                         | Installed `pandas<3` (2.3.3 works). Other compiled libraries could be blocked the same way                              |
+| GitHub web page showed "truncated this directory to 1,000 files"                                                  | GitHub folder listings stop at 1,000 entries (healthy has 1,645)                                                                                           | Not a data problem; git clone gets all files                                                                            |
+
+---
+
+## 4. Known limitations (for the paper)
+
+- pHash catches resized or re-saved copies. It does not catch rotated or flipped copies, or a different photo of the same leaf. State this as an audit limitation.
+- The 5-bit limit is not validated on leaf images.
+- Large difference in image resolution and conditions between source (256 px, lab) and target (field, up to 2,048 px) is the intended shift, but it should be described.
+- The paper's draft still marks the audit as `[EVIDENCE NEEDED]`; update it with F1 to F4 once the review is finished.
+
+---
+
+## 5. Open items / next steps
+
+1. Enter the review decisions in `manifests/near_duplicate_review.csv` (pairs 1-16 `duplicate`, pairs 17-19 `different`, see F4); then run `python src/review_pairs.py --summarize`.
+2. Enter the decisions for pairs 101-144 in `manifests/sweep_review.csv` (see F6) and run `python src/review_sweep_pairs.py --summarize`. Lock the limit at 5 (D4) and use the confirmed distance-6 pairs as extra groups.
+3. Decide F3 (Train_379 / Train_1173) before any target image goes through the model.
+4. Decide D8 for the rest of the target copies (none besides F3 so far).
+5. In `requirements.txt`, change `pandas` to `pandas<3` so the other PC does not install the blocked version.
+6. On the other PC: clone, install, download both datasets, run `prepare_pp2020.py` and `audit_dataset.py`, and compare the manifest SHA-256 with F1.
+7. Step 3 `make_splits.py` is done (F8). Next: the data loader and image transforms.
+
+---
+
+## 6. Method notes: how the two hash functions work (for the project log book)
+
+### SHA-256 (exact copies)
+
+- Input: the raw bytes of the image file. It does not look at the picture.
+- The bytes are mixed through a fixed series of steps into a 256-bit fingerprint (64 hex characters).
+- Same bytes give the same fingerprint. Changing a single byte gives a completely different one.
+- Use here: certain detection of byte-identical files, within and across datasets. It cannot detect a resized or re-saved copy.
+- Also used for the manifest sidecar (`manifest.csv.sha256`), which identifies the exact data version.
+
+### pHash (look-alike copies), as computed by the `imagehash` library
+
+1. Shrink the image to 32 x 32 pixels and convert to grey (1,024 pixel values).
+2. Apply the DCT (discrete cosine transform). It turns the 1,024 pixel values into 1,024 pattern values. Each pattern value says how strongly one fixed wave pattern (for example "bright left, dark right", or fine stripes) is present in the image. The values sit in a 32 x 32 grid: coarse patterns top-left, finer patterns towards the bottom-right.
+3. Keep only the top-left 8 x 8 corner, the 64 coarsest patterns. Chosen by position, not by size. Coarse patterns describe the overall light and dark layout and barely change with resizing, re-saving or small brightness changes. Fine patterns change easily, so they are ignored.
+4. Take the median of these 64 values (the middle of the sorted list; half of the values lie above it and half below). The median comes from the 64 pattern values, not from the pixel values.
+5. Each value above the median becomes bit 1, every other value bit 0. Result: a 64-bit hash, stored as 16 hex characters.
+
+- Distance between two images = Hamming distance = number of bit positions where their hashes differ (0 to 64). Unrelated images typically differ by about 28 to 36 bits.
+
+### Why only even distances occur
+
+- Because of the median step, every hash has exactly 32 ones and 32 zeros. Checked on test images (every hash had 32 ones); not separately checked on the real manifest.
+- If two hashes both have 32 ones, every position where one has a 1 and the other a 0 is balanced by a position the other way round. Differences come in pairs, so the distance is always 0, 2, 4, 6, 8, 10, ...
+- Example: a = 32 ones then 32 zeros; b = same except bit 1 and bit 64 swapped: they differ in 2 places, distance 2.
+- Consequence: a limit of 5 is the same as a limit of 4. The zero counts at distances 1, 3, 5, 7, 9 in `phash_sweep_table.csv` are not missing data; those distances cannot occur.
+
+### Why SHA-256 and pHash are used together
+
+- SHA-256 gives certainty for exact copies, so they are not reviewed by eye.
+- pHash finds copies that were resized, re-saved or re-framed; each such candidate needs a manual check because look-alike leaves can also get close hashes (pairs 17 to 19, and 33 of the 42 distance-6 pairs).
+- Share of real same-leaf pairs by distance in our review: 0: 2 of 2, 2: 7 of 7, 4: 7 of 10, 6: 9 of 42 (21%).
+
+---
+
+## 7. Comparison with paper draft v2 (dated 9 October 2026), checked 2026-10-09
+
+### 7.1 Done in the project, but the draft still says pending or in progress
+
+- Dataset acquisition: PlantVillage (GitHub sparse clone, 2,550 images) and PP2020 (manual Kaggle download, 1,821 train images) are in place and the counts match. The draft says retrieval is pending and Kaggle API setup is in progress. Work is done locally on Windows, not in Colab.
+- Raw dataset audit (SHA-256, pHash, decodeability, counts, label consistency): done, see F1 to F7. Draft: pending.
+- Immutable master manifest and hash: done (manifest hash in F1). Draft: pending.
+- Source splits: done (F8). Draft: "created only after audit passes".
+- Cross-dataset duplicate check: done, none found.
+- Data loader and preprocessing, model definition and training script: written (this step).
+
+### 7.2 Done in the project, but not mentioned in the draft
+
+- pHash candidate limit fixed at 5 bits (the draft gives no number); only even distances occur; extended review up to distance 10 and its limitation (about 800 source pairs unreviewed).
+- Rule that "unsure" review decisions count as duplicates.
+- Source finding: 7 exact duplicate groups (same photos stored twice) and 6 same-leaf near-duplicate pairs; all grouped in the split.
+- Target finding: 1 exact pair with conflicting labels (Train_379 scab / Train_1173 multiple_diseases) and 21 near-duplicate pairs inside PP2020 (22 pairs in total). Open decision D8. The draft only discusses duplicate leakage within source splits and across datasets, and plans a plain paired bootstrap, which would treat repeated target photos as independent.
+- Image size gap: source 256 x 256, target 1,365 to 2,048 px per side.
+- Preprocessing choices: direct resize to 224 x 224 for both datasets, no EXIF orientation correction (some target images look sideways), flip probability 0.5, black rotation fill, ImageNet normalization.
+- Framework PyTorch (the draft uses Keras wording) and the hardware (RTX 3050 4 GB, 8 GB RAM).
+- Seed 42 and the split algorithm (seeded, greedy, group-aware, class-stratified).
+
+### 7.3 Differences in details
+
+- Parameter counts: PyTorch MobileNetV3-Small features have 927,008 parameters, not the planned 939,120 (difference 12,112). Classifier total 928,739 instead of 940,851. With the planned failure head (37,185) the whole system would be 965,924 instead of 978,036. Report the PyTorch numbers.
+- Batch size: the draft fixes 32 (disease warm-up) and 64 (failure head). An earlier note in this log and code comments said the paper gave no batch size; this was wrong and has been corrected in config.py. Fine-tuning batch is not given; 32 is used.
+- Phase B "final three inverted-residual blocks + final 1x1 conv" = modules 9, 10, 11 and 12 of the torchvision feature list (730,731 trainable parameters with the output layer, BatchNorm frozen).
+- Validation loss in phase A is the same class-weighted loss as training (the draft does not say).
+- The draft's Appendix A gate items not yet recorded: dataset URLs and versions with download dates, licences or competition terms, archive hashes (individual files are hashed in the manifest, the Kaggle archive and the PlantVillage commit are not), and a separate label-free target inference manifest (TargetDataset reads the manifest and never returns labels).
+- Strict source-only rule (draft 3.5, "manually observed target characteristic"): the audit and the duplicate review necessarily looked at target images. Preprocessing choices were fixed as general rules, not as reactions, but state this transparently in the paper.
+
+### 7.4 In the draft, not yet done
+
+- Disease training (phases A and B), source augmentation as specified, three prespecified seeds (only seed 42 is fixed so far; the other two seeds must be chosen before any target result).
+- S-reliability split by original image ID (group-aware) into reliability-training and reliability-validation, perturbed views, at least 50 positive failures.
+- Failure head (needs an explicit L2 term in PyTorch), baselines B1 to B5, ablation A1, temperature scaling, tau80 and tau90 on S-calibration.
+- Metrics (accuracy, macro-F1, ECE, Brier, NLL, AUROC-error, AUPRC-error, risk-coverage, AURC), about 2,000 paired bootstrap resamples, efficiency measurements, target prediction file hashed before unblinding.
+- SelectiveNet remains [DECISION NEEDED]. Licences and ethics statement. Results sections.
+
+
+
+Draft Research Paper:
+
+A Lightweight Source-Only Failure-Prediction Framework for Reliable Apple Foliar Disease Classification under Unseen Field-Domain Shift\
+Pre-Results Original Research Paper Draft\
+Current status: literature synthesis, gap challenge, research questions, study design, model specification, evaluation protocol, and dataset audit plan are complete. Correct dataset acquisition and raw-file audit are still in progress. No experimental results are reported.\
+Author: [AUTHOR NAME]\
+Affiliation: [INSTITUTION / DEPARTMENT]\
+Corresponding email: [EMAIL]\
+Draft date: 9 October 2026\
+\
+Abstract\
+[TO BE WRITTEN AFTER RESULTS ARE ESTABLISHED]. The final abstract will report the verified problem, datasets, methods, principal findings, uncertainty, and conclusion only after the source-only evaluation has been completed. No result or performance claim is inserted at this stage.\
+Keywords: apple leaf disease; failure prediction; selective classification; distribution shift; confidence estimation; MobileNetV3-Small; source-only learning; domain generalization\
+1\. Introduction\
+Image-based deep learning has become a widely studied approach for automated plant disease recognition. Early work using the PlantVillage dataset demonstrated that convolutional neural networks can achieve high accuracy on controlled leaf-image benchmarks while also emphasizing the need to evaluate generalization beyond curated image conditions [1]. For apple-specific field evaluation, the Plant Pathology Challenge 2020 dataset was subsequently created from real-world orchard imagery with variation in illumination, background, viewing angle, surface, focus, and noise [2]. Together, controlled and field datasets expose an important distinction between benchmark classification accuracy and practical deployment reliability.\
+Recent literature shows that the deployment problem is not limited to classification accuracy. Under controlled-to-field distribution shift, a classifier can become substantially less accurate while retaining high confidence. Xiang, Shi, and Zhu evaluated this reliability gap in plant-disease classification and reported that standard calibration, selective prediction, out-of-distribution scoring, and ensemble strategies do not necessarily eliminate the problem [3]. Apple-specific studies have also begun to report calibration and cross-dataset evaluation, which means that neither apple cross-dataset classification nor calibration alone can be presented as a novel contribution [4,5,10].\
+A second line of prior work establishes that explicit confidence or rejection mechanisms are not new in machine learning. DeVries and Taylor proposed a learned confidence branch [6], while SelectiveNet jointly learned prediction and selection functions in an end-to-end selective-classification framework [7]. Consequently, the contribution of the present study is not the generic idea of adding a confidence head. The narrower question is whether a computationally lightweight failure-prediction mechanism, learned entirely from source-domain apple data, can remain useful for identifying erroneous predictions in a strictly unseen field domain without using target-domain data for adaptation, calibration, threshold selection, or model selection.\
+This study therefore proposes a strict source-only protocol in which a lightweight MobileNetV3-Small disease classifier is trained on controlled apple-leaf images, frozen, and augmented with a small failure-prediction head trained only from source-domain errors. The proposed reliability mechanism is compared with maximum softmax probability, predictive entropy, probability margin, temperature-scaled confidence, and a logits-only learned error predictor. The primary planned outcome is target-domain area under the risk-coverage curve (AURC), rather than classification accuracy alone.\
+1.1 Problem Statement\
+Deep-learning classifiers trained on controlled apple-leaf images may lose classification performance when applied to field images acquired under different environmental and imaging conditions. More importantly, confidence scores may remain high even when predictions become incorrect. A deployment-oriented system therefore needs not only disease discrimination but also a mechanism for identifying predictions that are likely to be unreliable under distribution shift. Existing work already covers apple cross-dataset recognition, plant-disease domain generalization, probability calibration, uncertainty estimation, and learned selective prediction. What remains provisionally unresolved within the literature examined for this study is whether a small failure-prediction mechanism trained solely from source-domain apple data can improve error discrimination and selective reliability on a strictly unseen field domain beyond established confidence baselines.\
+1.2 Revised Research Gap\
+Existing studies have established cross-dataset and unseen-domain apple disease recognition and have demonstrated that confidence calibration and selective prediction can degrade under controlled-to-field distribution shift. General machine-learning research has also developed learned confidence and selective-classification mechanisms. However, within the literature examined here, it remains uncertain whether a computationally lightweight failure-prediction mechanism trained solely from source-domain apple disease data can improve discrimination of correct versus incorrect predictions on a strictly unseen field domain beyond established post-hoc confidence and selective-classification baselines, without using target-domain data for adaptation, calibration, or threshold selection.\
+Novelty status: [EVIDENCE NEEDED UNTIL THE FINAL DATABASE CHECK AND EXPERIMENTAL STUDY ARE COMPLETE].\
+1.3 Research Questions\
+Primary RQ: Does a lightweight failure-prediction mechanism trained solely from source-domain apple images improve selective reliability on an unseen field-domain apple dataset compared with established confidence baselines?\
+RQ2: How much does the frozen source-trained disease classifier's performance change when transferred from controlled source images to unseen field images?\
+RQ3: Does the proposed failure predictor discriminate incorrect target-domain predictions better than classifier-output-only methods?\
+RQ4: How well do confidence/rejection thresholds selected exclusively from source data transfer to the unseen target domain?\
+RQ5: Do visual features and classifier logits each contribute useful information to failure prediction?\
+RQ6: What computational overhead does the proposed reliability mechanism add to the lightweight disease classifier?\
+1.4 Objectives\
+•	Train a lightweight three-class apple disease classifier using source-domain data only.\
+•	Quantify source-to-target classification degradation under a natural controlled-to-field distribution shift.\
+•	Train a lightweight failure predictor from errors produced by the frozen classifier on a separate source-only reliability subset.\
+•	Compare the proposed failure predictor with maximum softmax probability, predictive entropy, top-1/top-2 probability margin, temperature-scaled confidence, and a logits-only learned error predictor.\
+•	Evaluate target-domain error discrimination, calibration, and risk-coverage behaviour.\
+•	Test the transfer of source-selected 80% and 90% coverage thresholds to the unseen target domain.\
+•	Perform features-only and logits-only ablations.\
+•	Quantify parameter, model-size, and inference-time overhead.\
+1.5 Hypothesis\
+The primary directional hypothesis is that the proposed failure-prediction method will yield lower target-domain AURC than maximum softmax probability. The corresponding null hypothesis is that the proposed method will have equal or higher target-domain AURC. Comparisons with the remaining baselines will be treated as secondary analyses. Failure to outperform a baseline will be reported as a valid result rather than treated as an implementation failure.\
+2\. Related Work\
+2.1 Controlled and Field Apple Disease Datasets\
+PlantVillage is a widely used controlled-condition plant-disease image resource. Mohanty, Hughes, and Salathe used 54,306 healthy and diseased leaf images from PlantVillage to demonstrate the feasibility of deep convolutional classification while noting the importance of generalization beyond controlled datasets [1]. For apple-specific field evaluation, Thapa et al. introduced the Plant Pathology Challenge 2020 dataset, containing real-world apple foliar disease images captured under variable illumination, angles, backgrounds, surfaces, focus, and noise [2]. These datasets motivate a controlled-source to field-target evaluation.\
+2.2 Apple Cross-Dataset and Domain-Generalization Research\
+Cross-dataset apple disease recognition has already been directly investigated. Yan and Wang developed a cross-dataset discriminant subspace learning method for apple leaf disease identification using multiple source datasets and a distinct target dataset [8]. Zhan et al. later established laboratory-to-field domain-generalization benchmarks for plant leaf disease recognition, including an apple benchmark, and proposed a domain-generalization method based on style-sensitive distillation and prototype matching [5]. These studies prevent the present work from claiming that apple cross-dataset recognition or laboratory-to-field generalization is itself novel.\
+2.3 Reliability, Calibration, and Selective Prediction\
+Calibration and selective prediction address different reliability questions. Calibration evaluates whether reported probabilities correspond to empirical correctness frequencies, whereas selective prediction evaluates whether a system can identify when to abstain. Guo et al. established temperature scaling as a strong post-hoc calibration baseline [9]. DeVries and Taylor proposed learning a confidence branch for neural-network predictions [6], and Geifman and El-Yaniv developed SelectiveNet to jointly learn classification and selection [7]. These works establish that a two-output or rejection-aware architecture is not, by itself, a novel methodological contribution.\
+Within plant-disease research, reliability under shift is also an active topic. Xiang et al. evaluated calibration, selective prediction, out-of-distribution scoring, ensembles, and adaptation under controlled-to-field shift [3]. Wu et al. combined unsupervised domain adaptation with uncertainty regularization for plant-disease recognition in the wild [11]. Apple-specific recent work, including LeafSightX and the ContinuousLayer study, reports confidence/calibration analyses and external or cross-dataset evaluation [4,10]. Accordingly, the present study narrows its contribution to source-only lightweight failure prediction evaluated against strict unseen-domain errors.\
+2.4 Closest-Study Positioning\
+Study	Primary focus	Relevant overlap	What remains different\
+Xiang et al. (2026) [3]	Plant-disease reliability under controlled-to-field shift	Calibration, selective prediction, OOD scoring, threshold transfer	No apple-specific lightweight learned failure head\
+Haque et al. / LeafSightX (2026) [4]	Apple classification with calibration analysis	ECE/Brier and additional validation	Not strict source-only learned failure prediction\
+Zhan et al. (2025) [5]	Plant domain generalization including apple	Unseen-domain laboratory-to-field benchmarking	Focuses on disease generalization rather than explicit failure prediction\
+Yan & Wang (2024) [8]	Apple cross-dataset recognition	Cross-dataset transfer/subspace learning	No selective reliability mechanism\
+DeVries & Taylor (2018) [6]	Learned confidence/OOD	Confidence branch	Not agriculture-specific; no strict apple field-domain evaluation\
+SelectiveNet (2019) [7]	Selective classification	Integrated prediction/selection	Not lightweight apple source-only domain-shift evaluation\
+\
+3\. Materials and Methods\
+3.1 Study Design\
+The study is designed as a quantitative computational experiment with strict source-only development and external cross-domain evaluation. All model training, hyperparameter selection, early stopping, calibration, reliability-head training, and threshold selection will use source-domain information only. The target field dataset will remain unavailable to the development pipeline until all model and threshold decisions are frozen. This design differs from domain adaptation because no target-domain image, label, statistic, or prediction outcome may influence model development.\
+3.2 Planned Data Sources\
+The planned source dataset is the original non-augmented color apple subset of PlantVillage, restricted to Healthy, Apple Scab, and Cedar Apple Rust. Published metadata indicate 1,645 healthy, 630 scab, and 275 cedar apple rust images, giving 2,550 potentially eligible source images; observed counts must be verified after the exact downloaded version is audited [EVIDENCE NEEDED]. Black Rot will not be used in the primary study because it lacks a directly corresponding target class.\
+The planned target dataset is the labeled training portion of Plant Pathology 2020-FGVC7. Published metadata indicate 1,821 labeled field images divided among Healthy, Apple Scab, Cedar Apple Rust, and multiple-disease examples. The expected single-label counts are 516 healthy, 592 scab, 622 rust, and 91 multiple-disease images; observed counts must be verified from the official downloaded CSV [EVIDENCE NEEDED]. The primary closed-set target analysis will use the three shared single-label classes only, after blind inference has been completed on all labeled target images.\
+3.3 Current Dataset Acquisition Status\
+Current status (9 October 2026): The official Plant Pathology 2020 Kaggle competition and its data description have been verified, and Kaggle API access setup is in progress. A previously located Google Drive train.csv was identified as the unrelated Titanic dataset and has been excluded. The correct Plant Pathology 2020 archive and the PlantVillage source dataset have not yet been fully verified inside the Colab environment. Therefore, no raw-file audit has yet been completed and no training has begun.\
+3.4 Dataset Audit and Inclusion/Exclusion Rules\
+Before model training, both datasets will undergo a reproducible audit. The audit script checks file decodeability, dimensions, image format, file size, class counts, SHA-256 exact duplicates, 64-bit perceptual-hash near-duplicate candidates, and label/image consistency. It will generate a versioned immutable manifest and a SHA-256 sidecar hash. Near-duplicate candidates will require manual review and will not be automatically deleted.\
+•	Use original color/non-augmented PlantVillage images only.\
+•	Exclude corrupt or undecodable files, documenting every exclusion.\
+•	Prevent exact or confirmed near-duplicate leakage across source splits.\
+•	Check for cross-dataset exact and perceptual duplicates before target evaluation.\
+•	Keep Plant Pathology multiple-disease images for blind inference but exclude them from the primary three-class metrics after labels are joined.\
+•	Record exact dataset versions, licenses/terms, source URLs, archive hashes, and download dates.\
+3.5 Strict Source-Only Rule\
+No target-domain image, label, statistic, prediction result, or manually observed target characteristic may influence training, architecture selection, hyperparameters, augmentation policy, checkpoint selection, calibration, or confidence-threshold selection. Target labels will be used only after the final target prediction file has been generated, saved, and hashed. Any later model modification after observing target labels will be classified as exploratory follow-up rather than part of the primary confirmatory experiment.\
+3.6 Source Data Splits\
+Subset	Planned share	Purpose\
+S-train	50%	Initial disease-model training\
+S-val	10%	Early stopping and development decisions\
+S-reliability	15%	Failure-prediction head development\
+S-calibration	10%	Temperature scaling and threshold selection\
+S-test	15%	Untouched in-domain reference evaluation\
+\
+Splits will be stratified by class. If PlantVillage leaf/group metadata are available for the downloaded version, group-aware splitting will be used to prevent related images from crossing subsets. Exact duplicate and confirmed near-duplicate groups must remain within a single split. The random seed and final split manifest will be frozen before model training.\
+3.7 Disease Classifier\
+The planned backbone is MobileNetV3-Small with ImageNet pretraining, alpha = 1.0, 224 x 224 RGB input, and the original ImageNet classification head removed. Global average pooling yields a 576-dimensional representation. A dropout layer with rate 0.20 and a three-unit linear classification layer will produce logits for Healthy, Scab, and Cedar Apple Rust. The planned classifier has approximately 940,851 parameters based on the current design; the exact count must be confirmed from the implemented framework [RESULTS PENDING].\
+3.8 Failure-Prediction Head\
+The reliability mechanism will receive the frozen 576-dimensional image feature vector concatenated with the three frozen disease-classifier logits, forming a 579-dimensional input. This input is passed through Dense(64, ReLU), dropout 0.30, and Dense(1, sigmoid) to estimate the probability that the disease prediction is incorrect. L2 kernel regularization of 1e-4 is planned for the hidden layer. The head contains approximately 37,185 parameters, producing an estimated total system size below one million parameters; the exact runtime parameter count remains [RESULTS PENDING].\
+Component	Planned configuration	Purpose\
+Disease backbone	MobileNetV3-Small, ImageNet pretrained, include_top=False	Feature extraction\
+Pooling	Global average pooling -> 576-D	Compact representation\
+Disease head	Dropout(0.20) -> Dense(3, linear) -> Softmax	Three-class disease prediction\
+Reliability input	576 features + 3 logits = 579-D	Representation + classifier evidence\
+Failure head	Dense(64, ReLU, L2=1e-4) -> Dropout(0.30) -> Dense(1, sigmoid)	P(classifier error)\
+\
+3.9 Loss Functions\
+Disease classification will use class-weighted categorical cross-entropy. Class weights will be calculated only from S-train using w_c = N/(C\*n_c), where N is the number of source training images, C = 3 classes, and n_c is the training count for class c. The failure predictor will use weighted binary cross-entropy with classifier error treated as the positive class. The positive weight will be computed from reliability-training errors and capped at 5 to avoid unstable gradients when errors are rare.\
+3.10 Training Schedule\
+Phase	Planned settings	Selection criterion\
+Disease head warm-up	Backbone frozen; Adam; lr=1e-3; batch=32; max 12 epochs; early stopping patience=3	Source validation loss\
+Backbone fine-tuning	Unfreeze final three MobileNetV3 inverted-residual blocks + final 1x1 conv; BatchNorm frozen; AdamW; lr=3e-5; weight decay=1e-5; max 20 epochs; patience=5	Source validation macro-F1\
+Failure head	Disease classifier fully frozen; Adam; lr=5e-4; batch=64; max 30 epochs; patience=5	Reliability-validation AUPRC-error\
+\
+Source augmentation for disease training is limited to mild horizontal flipping, rotation up to +/-15 degrees, zoom up to +/-10%, and contrast up to +/-10%. These choices will be frozen before any target evaluation. Final disease-model training will use the development-determined epoch counts without target-dependent early stopping.\
+3.11 Source-Only Failure Generation\
+Because the source classifier may make relatively few clean-image errors, the S-reliability subset will be used to generate prespecified source-only hard views after it is separated into reliability-training and reliability-validation partitions by original image ID. The planned single perturbations are brightness factor 0.7-1.3, contrast factor 0.7-1.3, Gaussian blur sigma 0.5-1.5, and Gaussian noise sigma 0.01-0.05 in normalized pixel space. Each failure label equals 1 when the frozen disease classifier predicts the wrong class and 0 otherwise. At least 50 positive reliability-training errors are required; otherwise the protocol must be explicitly revised and documented rather than silently increasing perturbation severity.\
+3.12 Baselines and Ablations\
+ID	Method	Purpose\
+B1	Maximum Softmax Probability (MSP)	Standard simple confidence baseline\
+B2	Predictive entropy	Distribution-wide uncertainty\
+B3	Top-1 minus top-2 probability margin	Decision ambiguity\
+B4	Temperature-scaled MSP	Post-hoc calibration baseline\
+B5	Logits-only learned error predictor	Tests whether classifier outputs alone are sufficient\
+A1	Features-only failure head	Ablation of logits\
+P1	Features + logits failure head	Proposed reliability mechanism\
+\
+A full SelectiveNet implementation remains [DECISION NEEDED]. It would strengthen methodological comparison but must not compromise the core experiment within the available implementation time. If omitted, the manuscript will narrow claims accordingly and retain SelectiveNet as methodological prior work rather than as a directly reproduced baseline.\
+3.13 Calibration and Threshold Selection\
+Temperature scaling will fit a single scalar temperature on S-calibration only by minimizing negative log-likelihood. Two deployment thresholds will be selected from S-calibration only: tau80 targeting approximately 80% source calibration coverage, and tau90 targeting approximately 90% coverage. These numerical thresholds will be frozen before target inference and applied unchanged to S-test and target data. Target-specific threshold recalibration is prohibited in the primary experiment.\
+3.14 Target Evaluation and Label Unblinding\
+All target images will first be processed by the frozen disease classifier and all frozen reliability methods without consulting target labels. Disease predictions, probability vectors, confidence/failure scores, and model identifiers will be saved to an immutable prediction file and hashed. Only then will target labels be joined. Primary closed-set analysis will use Healthy, Scab, and Rust images. Multiple-disease images may be analyzed separately only as explicitly exploratory observations and will not influence the primary model-selection or threshold decisions.\
+3.15 Evaluation Metrics\
+Metric family	Planned metrics	Interpretation\
+Disease classification	Accuracy; macro-F1; per-class precision, recall, F1; confusion matrix	Quantify source-to-target classification degradation\
+Calibration	ECE; Brier score; negative log-likelihood; reliability diagram	Assess probability alignment\
+Failure discrimination	AUROC-error; AUPRC-error	Test ranking of incorrect versus correct predictions\
+Selective prediction	Risk-coverage curve; AURC; selective risk and realized coverage at tau80/tau90	Primary reliability evaluation\
+Efficiency	Parameters; model size; FLOPs/MACs if feasible; inference time; reliability-head overhead	Verify lightweight constraint\
+\
+The primary endpoint is target-domain AURC. Lower AURC indicates a better risk-coverage trade-off. The principal comparison is Delta AURC = AURC_proposed - AURC_MSP. Support for the directional hypothesis requires a negative Delta AURC and a paired 95% bootstrap confidence interval lying below zero. If the interval includes zero, the evidence will be treated as inconclusive; if it lies above zero, the proposed method will be interpreted as performing worse than MSP.\
+3.16 Statistical Analysis and Sample-Size Rationale\
+The study will use all eligible images from the prespecified public datasets rather than selecting an arbitrary sample size. A defensible effect size for target-domain AURC improvement is not yet available, so an invented power calculation would be inappropriate. Precision will instead be quantified through approximately 2,000 paired stratified bootstrap resamples of the target evaluation set. Three prespecified training seeds are planned, and all seed-specific results will be reported. Exact class-specific error counts will be shown because rare errors can make classwise AUPRC and calibration estimates unstable.\
+3.17 Research Question-to-Evidence Mapping\
+Research question	Evidence required	Planned analysis\
+RQ1	Frozen target predictions and reliability scores for all methods	Target AURC; paired bootstrap Delta AURC vs MSP\
+RQ2	S-test and target disease predictions	Accuracy, macro-F1, per-class recall/F1, confusion matrices\
+RQ3	Correct/error status and risk scores	AUROC-error and AUPRC-error\
+RQ4	Source-selected tau80/tau90 applied unchanged to target	Realized coverage and selective risk\
+RQ5	Features-only, logits-only, and combined-head outputs	AURC/AUPRC comparisons among ablations\
+RQ6	Implemented models and timing logs	Parameter count, model size, latency, percentage overhead\
+\
+3.18 Bias, Uncertainty, and Threats to Validity\
+•	Data leakage: target information must not influence development; prediction files are frozen before target labels are joined.\
+•	Duplicate leakage: exact and perceptual duplicate checks are required within source splits and across source/target datasets.\
+•	Construct validity: calibration, uncertainty, OOD detection, and failure prediction are related but distinct concepts and will not be treated as interchangeable.\
+•	Synthetic-error mismatch: source perturbations may not resemble natural field failures; this will be treated as a limitation rather than hidden.\
+•	Class-prior shift: source and target class distributions differ, so macro and classwise analyses are required.\
+•	Single source-target pair: conclusions cannot automatically generalize to all orchards, cameras, regions, cultivars, seasons, or disease severities.\
+•	Researcher degrees of freedom: augmentation, corruption ranges, metrics, baselines, and thresholds are prespecified before target evaluation.\
+•	Statistical uncertainty: bootstrap confidence intervals and seed-level reporting will be used rather than relying on single point estimates.\
+3.19 Ethics, Access, Licensing, and Reproducibility\
+The proposed study uses existing plant-image datasets and does not involve human participants or personal data. Exact dataset licences, attribution requirements, and redistribution restrictions will be recorded from the downloaded versions before publication [EVIDENCE NEEDED]. Institutional requirements regarding ethics review or exemption must also be checked before stating that formal approval was unnecessary. Reproducibility records will include dataset hashes, immutable manifests, split identifiers, random seeds, environment/package versions, model checkpoints, source-only calibration parameters, thresholds, prediction files, and analysis scripts.\
+4\. Planned Results Presentation (No Results Yet)\
+No numerical results are available at this stage. This section is included only to predefine how evidence will be reported after the dataset audit, model training, and target evaluation are complete. No table or figure below should be populated until the corresponding analysis is executed.\
+•	Table: audited source and target class counts, exclusions, corrupt-image findings, and duplicate findings.\
+•	Table: disease-classification performance on S-test and target domain.\
+•	Table: calibration, failure discrimination, AURC, and threshold-transfer results for all baselines and the proposed method.\
+•	Table: parameter count, model size, and inference-time overhead.\
+•	Figure: source and target confusion matrices.\
+•	Figure: risk-coverage curves for all reliability methods.\
+•	Figure: source and target reliability diagrams.\
+•	Figure: error-score distributions for correct versus incorrect target predictions.\
+5\. Discussion Framework\
+The final discussion will be written only after results are available. It will compare the findings with the reliability gap reported by Xiang et al. [3], apple-specific calibration work [4,10], domain-generalization work [5,8], and learned confidence/selective-prediction methods [6,7]. It will distinguish probability calibration from error discrimination and will not assume that a learned reliability head is inherently superior.\
+5.1 Findings That Would Challenge the Expected Contribution\
+•	MSP, entropy, probability margin, or temperature scaling equals or outperforms the proposed learned head.\
+•	The logits-only baseline performs as well as the features-plus-logits head.\
+•	The proposed method improves source reliability but fails under field-domain shift.\
+•	AURC improvement is inconsistent across seeds or its bootstrap confidence interval includes no clear advantage.\
+•	Source-selected tau80/tau90 thresholds become operationally unusable on the target domain.\
+•	Any observed benefit is confined to one disease class.\
+•	The reliability mechanism adds disproportionate computational cost.\
+•	Source hard-view failures do not provide useful signals for naturally occurring target errors.\
+6\. Current Research Status and Remaining Work\
+Stage	Status	Current evidence / next condition\
+Topic selection	Complete	Source-only lightweight failure prediction under apple field-domain shift\
+Exploratory literature search	Complete	Apple, plant-disease, domain-shift, calibration, selective-prediction, failure-prediction literature reviewed\
+Closest-study evidence matrix	Complete	Six anchor studies compared\
+Gap challenge	Complete	Broad gap rejected; narrower source-only failure-prediction gap retained provisionally\
+Research questions/objectives	Complete	Primary and secondary questions mapped to evidence\
+Study protocol	Complete	Strict source-only development and target unblinding protocol defined\
+Model specification	Complete as planned design	MobileNetV3-Small + small feature/logit failure head\
+Dataset source verification	Partly complete	Official Plant Pathology 2020 competition verified; correct archive retrieval pending; PlantVillage retrieval pending\
+Raw dataset audit	Pending	Integrity, counts, corruption, SHA-256 and pHash checks not yet executed\
+Immutable source splits	Pending	Created only after audit passes\
+Training and baselines	Pending	No model results yet\
+Target evaluation	Pending	Must remain blinded until all development choices are frozen\
+Results/Discussion/Conclusion/Abstract	Pending	Written only after empirical evidence is established\
+\
+6.1 Immediate Next Activities\
+1\.	Complete Kaggle API authentication and download the official Plant Pathology 2020-FGVC7 archive.\
+2\.	Verify train.csv columns and observed class counts from the downloaded competition data.\
+3\.	Download the maintained/original PlantVillage dataset and locate the three required apple class folders.\
+4\.	Run the pre-training audit script on both datasets.\
+5\.	Review corrupt/missing files, exact duplicate groups, and cross-dataset pHash near-duplicate candidates.\
+6\.	Freeze the final immutable dataset manifest and source split manifests.\
+7\.	Only after the audit passes, begin disease-classifier training.\
+7\. References\
+[1] Mohanty, S. P., Hughes, D. P., & Salathe, M. (2016). Using Deep Learning for Image-Based Plant Disease Detection. Frontiers in Plant Science, 7, 1419. https\://doi.org/10.3389/fpls.2016.01419\
+[2] Thapa, R., Zhang, K., Snavely, N., Belongie, S., & Khan, A. (2020). The Plant Pathology Challenge 2020 data set to classify foliar disease of apples. Applications in Plant Sciences, 8(9), e11390. https\://doi.org/10.1002/aps3.11390\
+[3] Xiang, K., Shi, D., & Zhu, X. (2026). Quantifying the reliability gap in cross-domain plant disease classification: benchmarking the limited efficacy of standard mitigation techniques under controlled-to-field shift. Frontiers in Plant Science, 17. https\://doi.org/10.3389/fpls.2026.1826962\
+[4] Haque, M. E., Al Farid, F., Siam, M. K., Absur, M. N., Uddin, J., & Karim, H. A. (2026). LeafSightX: an explainable attention-enhanced CNN fusion model for apple leaf disease identification. Frontiers in Artificial Intelligence. https\://doi.org/10.3389/frai.2025.1689865\
+[5] Zhan, K., Peng, Y., Liao, M., & Wang, Y. (2025). Domain generalization plant leaf disease recognition: Toward from laboratory to field. Engineering Applications of Artificial Intelligence, 156, 111168. https\://doi.org/10.1016/j.engappai.2025.111168\
+[6] DeVries, T., & Taylor, G. W. (2018). Learning Confidence for Out-of-Distribution Detection in Neural Networks. arXiv:1802.04865. https\://doi.org/10.48550/arXiv.1802.04865\
+[7] Geifman, Y., & El-Yaniv, R. (2019). SelectiveNet: A Deep Neural Network with an Integrated Reject Option. Proceedings of the 36th International Conference on Machine Learning, PMLR 97, 2151-2159.\
+[8] Yan, H., & Wang, X. (2024). Cross-dataset discriminant subspace learning algorithm for apple leaf diseases identification. Crop Protection, 181, 106690. https\://doi.org/10.1016/j.cropro.2024.106690\
+[9] Guo, C., Pleiss, G., Sun, Y., & Weinberger, K. Q. (2017). On Calibration of Modern Neural Networks. Proceedings of the 34th International Conference on Machine Learning, PMLR 70, 1321-1330.\
+[10] Shahade, A. K., & Deshmukh, P. V. (2026). Deep learning based apple leaf disease detection using spatially modulated continuouslayer. Scientific Reports, 16, 27009. https\://doi.org/10.1038/s41598-026-57763-0\
+[11] Wu, X., Fan, X., Luo, P., Das Choudhury, S., Tjahjadi, T., & Hu, C. (2023). From Laboratory to Field: Unsupervised Domain Adaptation for Plant Disease Recognition in the Wild. Plant Phenomics. https\://doi.org/10.34133/plantphenomics.0038\
+Appendix A. Pre-Training Dataset Audit Gate\
+Training must not begin until the following evidence has been recorded and the dataset audit is classified as PASS or PASS WITH EXCLUSIONS.\
+•	Dataset provenance, source URLs, exact versions, and download dates recorded.\
+•	Licences/competition terms saved and attribution/redistribution requirements recorded.\
+•	Archive/file hashes recorded.\
+•	Observed class counts reconciled with expected metadata.\
+•	Corrupt or missing images reviewed and exclusions logged.\
+•	Within-dataset and cross-dataset SHA-256 duplicate findings resolved.\
+•	pHash near-duplicate candidates manually reviewed.\
+•	Source grouping/related-image leakage prevented where metadata permit.\
+•	Immutable master manifest created and hashed.\
+•	Source split manifests created only after the audit passes.\
+•	Label-free target inference manifest created and target labels excluded from development code.\
+Appendix B. Planned Parameter Budget\
+Component	Planned parameters	Status\
+MobileNetV3-Small feature extractor	\~939,120	Planned; runtime confirmation required\
+Three-class disease head	1,731	Planned calculation\
+Disease classifier total	\~940,851	[RESULTS PENDING: confirm from implementation]\
+Failure-prediction head	37,185	Planned calculation\
+Complete system	\~978,036	[RESULTS PENDING: confirm from implementation]\
+Failure-head parameter overhead	\~3.95%	Planned estimate\
+\
+
+
+
+
+Config.py:
+
+"""\
+config.py  -  Single place for every fixed value used in the project.\
+\
+WHAT THIS FILE DOES\
+\-------------------\
+It does not run any experiment. It only stores constants (folder paths, class\
+names, random seed, split proportions, image size) that every other file will\
+import. Example in other files:  from config import SEED, SOURCE_CLASSES\
+\
+WHY WE NEED IT\
+\--------------\
+1\. Reproducibility: the paper says the split is "reproducibly seeded". One seed\
+&#x20;  stored here means every file uses the same seed.\
+2\. No hidden changes: if a value changes, it changes in one place only.\
+3\. Only values that are written in the paper are stored here. Values the paper\
+&#x20;  does not give (learning rate, batch size, epochs) are NOT here yet. We will\
+&#x20;  decide them later using source data only, never target data.\
+\
+All paths are built from the project root, so the project works from any\
+folder, for example D:\\\Capstone Project.\
+"""\
+\
+from pathlib import Path\
+\
+\# ---------------------------------------------------------------------------\
+\# 1. PATHS\
+\# ---------------------------------------------------------------------------\
+\# This file lives in \<root>/src/config.py, so the project root is two levels up.\
+PROJECT_ROOT = Path(\_\_file\_\_).resolve().parent.parent\
+\
+\# Raw data: downloaded once and never modified (paper, Section 3.3).\
+DATA_DIR = PROJECT_ROOT / "data"\
+PLANTVILLAGE_DIR = DATA_DIR / "plantvillage" / "raw" / "color"   # source\
+PP2020_DIR = DATA_DIR / "pp2020"                                  # target\
+PP2020_CSV = PP2020_DIR / "train.csv"                             # target labels\
+PP2020_IMAGES_DIR = PP2020_DIR / "images"                         # Train\_\*.jpg only\
+\# Where you unzip the Kaggle download exactly as it comes (train.csv, test.csv,\
+\# sample_submission.csv, images/). prepare_pp2020.py reads from here and never\
+\# changes it. PP2020_DIR above is the cleaned copy used by the experiment.\
+PP2020_RAW_DIR = DATA_DIR / "pp2020_raw"\
+\
+\# Generated outputs (these are created by our scripts, not downloaded).\
+MANIFEST_DIR = PROJECT_ROOT / "manifests"   # audit results, file hashes\
+SPLITS_DIR = PROJECT_ROOT / "splits"        # which image is in which subset\
+MODELS_DIR = PROJECT_ROOT / "models"        # trained weights\
+RESULTS_DIR = PROJECT_ROOT / "results"      # tables and figures\
+\
+\# ---------------------------------------------------------------------------\
+\# 2. REPRODUCIBILITY\
+\# ---------------------------------------------------------------------------\
+\# One fixed seed so that random choices (splits, weight init) can be repeated.\
+\# The paper says "reproducibly seeded" but does not give a number, so 42 is\
+\# our own choice. We fix it now, before seeing any result, and never change it.\
+SEED = 42\
+\
+\# ---------------------------------------------------------------------------\
+\# 3. CLASSES (paper, Section 3.2)\
+\# ---------------------------------------------------------------------------\
+\# The three disease states shared by both datasets. The ORDER matters: the\
+\# model outputs 3 numbers, and index 0/1/2 must always mean the same class.\
+CLASS_NAMES = ["healthy", "scab", "rust"]\
+CLASS_TO_INDEX = {name: i for i, name in enumerate(CLASS_NAMES)}\
+\
+\# PlantVillage folder name for each class. Black rot is left out on purpose:\
+\# the target dataset has no black rot class (paper, Section 3.2).\
+SOURCE_FOLDERS = {\
+&#x20;   "healthy": "Apple___healthy",\
+&#x20;   "scab": "Apple___Apple_scab",\
+&#x20;   "rust": "Apple___Cedar_apple_rust",\
+}\
+\
+\# Published counts quoted in the paper. These are only EXPECTED values; the\
+\# audit step will count the real files and compare.\
+EXPECTED_SOURCE_COUNTS = {"healthy": 1645, "scab": 630, "rust": 275}  # 2,550\
+EXPECTED_TARGET_COUNTS = {"healthy": 516, "scab": 592, "rust": 622}   # 1,730\
+EXPECTED_TARGET_MULTIPLE = 91   # excluded from the primary analysis only\
+\
+\# Plant Pathology 2020 stores labels as 4 yes/no columns in train.csv.\
+\# The first three match our classes; "multiple_diseases" has no match.\
+TARGET_LABEL_COLUMNS = ["healthy", "scab", "rust"]\
+TARGET_MULTIPLE_COLUMN = "multiple_diseases"\
+\
+\# ---------------------------------------------------------------------------\
+\# 4. SOURCE SPLIT PROPORTIONS (paper, Section 3.4)\
+\# ---------------------------------------------------------------------------\
+\# PlantVillage images are divided into 5 subsets. Each has one job.\
+SPLIT_PROPORTIONS = {\
+&#x20;   "s_train": 0.50,         # fit the disease classifier\
+&#x20;   "s_val": 0.10,           # model selection and early stopping\
+&#x20;   "s_reliability": 0.15,   # train and validate the failure-prediction head\
+&#x20;   "s_calibration": 0.10,   # temperature scaling and source-only thresholds\
+&#x20;   "s_test": 0.15,          # untouched in-domain reference\
+}\
+\
+\# ---------------------------------------------------------------------------\
+\# 5. MODEL SETTINGS (paper, Sections 3.5 and 3.6)\
+\# ---------------------------------------------------------------------------\
+IMAGE_SIZE = 224            # images are resized to 224 x 224, 3 colour channels\
+NUM_CLASSES = 3\
+FEATURE_DIM = 576           # MobileNetV3-Small features after global pooling\
+DISEASE_DROPOUT = 0.20      # dropout before the 3-unit disease layer\
+FAILURE_INPUT_DIM = FEATURE_DIM + NUM_CLASSES   # 576 + 3 = 579\
+FAILURE_HIDDEN_UNITS = 64\
+FAILURE_DROPOUT = 0.30\
+FAILURE_L2 = 1e-4\
+FAILURE_POS_WEIGHT_CAP = 5  # cap on the error-class weight in the loss\
+\
+\# Source-selected coverage levels used to test threshold transfer (RQ4).\
+COVERAGE_LEVELS = [0.80, 0.90]\
+\
+\# ---------------------------------------------------------------------------\
+\# 6. DATASET AUDIT (paper, Section 3.3)\
+\# ---------------------------------------------------------------------------\
+\# Two images whose 64-bit pHash differ in at most this many bits are listed as\
+\# a near-duplicate CANDIDATE. The paper does not give a number. 5 is a common\
+\# choice; we fix it before looking at any result. Candidates are only listed\
+\# for manual review, nothing is deleted automatically.\
+PHASH_MAX_DISTANCE = 5\
+\
+\# ---------------------------------------------------------------------------\
+\# 7. BATCH SIZES (paper draft v2, Section 3.10)\
+\# ---------------------------------------------------------------------------\
+\# The draft gives batch = 32 for the first disease-training phase and 64 for the\
+\# failure head; for the fine-tuning phase it gives no value, so 32 is used there\
+\# too. 32 also fits a 4 GB GPU (RTX 3050). If a run fails with "CUDA out of\
+\# memory", halve it (16) and write that in PROJECT_LOG.md.\
+BATCH_SIZE = 32          # disease classifier training (phases A and B)\
+EVAL_BATCH_SIZE = 64     # evaluation and feature extraction (no learning, less memory)\
+\
+\# ---------------------------------------------------------------------------\
+\# 8. DISEASE CLASSIFIER TRAINING (paper draft v2, Section 3.10)\
+\# ---------------------------------------------------------------------------\
+\# Phase A ("warm-up"): everything frozen except the 3-unit output layer.\
+PHASE_A_LR = 1e-3\
+PHASE_A_MAX_EPOCHS = 12\
+PHASE_A_PATIENCE = 3                 # stop after 3 epochs without a better validation loss\
+\# Phase B ("fine-tuning"): last 3 inverted-residual blocks + final 1x1 conv + output\
+\# layer are trained; BatchNorm stays frozen.\
+PHASE_B_LR = 3e-5\
+PHASE_B_WEIGHT_DECAY = 1e-5\
+PHASE_B_MAX_EPOCHS = 20\
+PHASE_B_PATIENCE = 5                 # stop after 5 epochs without a better validation macro-F1\
+\
+\
+def make_folders():\
+&#x20;   """Create the output folders if they do not exist yet.\
+\
+&#x20;   Raw data folders are NOT created here, because raw data must come from\
+&#x20;   the download scripts and must never be changed afterwards.\
+&#x20;   """\
+&#x20;   for folder in (MANIFEST_DIR, SPLITS_DIR, MODELS_DIR, RESULTS_DIR):\
+&#x20;       folder.mkdir(parents=True, exist_ok=True)\
+\
+\
+if \_\_name\_\_ == "\_\_main\_\_":\
+&#x20;   \# Running "python src/config.py" creates the folders and prints the paths,\
+&#x20;   \# so you can check that the project root is correct.\
+&#x20;   make_folders()\
+&#x20;   print("Project root :", PROJECT_ROOT)\
+&#x20;   print("Source data  :", PLANTVILLAGE_DIR)\
+&#x20;   print("Target data  :", PP2020_DIR)\
+&#x20;   print("Folders ready: manifests, splits, models, results")
+
+
+
+Dataset.py:
+"""
+dataset.py  -  Step 4: loads the images and turns them into numbers the neural
+network can read (tensors). Used by every training and evaluation script.
+
+WHAT THIS FILE DOES
+-------------------
+1. Reads which image belongs to which subset from splits/split_assignments.csv
+   (made by make_splits.py) and gives you the images of ONE subset at a time.
+2. Applies the image preparation ("transform") described in the paper.
+3. Gives the images to the model in small groups called batches.
+
+THE TWO TRANSFORMS
+------------------
+Both transforms first do the same preparation:
+    open image -> make it RGB -> resize to 224 x 224
+    -> scale pixel values from 0..255 to 0..1
+    -> subtract the ImageNet mean and divide by the ImageNet std, per colour.
+The last step is needed because the MobileNetV3-Small we start from was
+pretrained on ImageNet with exactly this scaling.
+
+  eval transform  : only the preparation above. Used for s_val, s_reliability,
+                    s_calibration, s_test and for the target (PP2020).
+  train transform : the preparation plus the mild augmentation of the paper
+                    (Section 3.8): horizontal flip, rotation up to +/-15
+                    degrees, zoom +/-10%, contrast +/-10%. ONLY for s_train.
+                    The paper says augmentation is never applied to
+                    validation, calibration or test sets, so the code refuses
+                    to use it on any other subset.
+
+CHOICES THE PAPER DOES NOT SPECIFY (made here, before any target result)
+------------------------------------------------------------------------
+  * Resizing: the whole image is resized straight to 224 x 224, for BOTH
+    datasets, with the same rule. Source images are square (256 x 256); the
+    target images are not, so they get squeezed a little. The other options
+    (cutting out the centre, adding borders) would remove parts of the leaf
+    or add fake borders. Whatever is chosen, it must be the same for source and
+    target and must not be changed after seeing target results.
+  * Flip probability 0.5 (standard for "horizontal flips").
+  * Rotated-in corners are filled with black.
+  * No automatic correction of photo orientation (EXIF) is applied, for either
+    dataset.
+  * Normalisation uses the ImageNet mean/std (PyTorch convention for
+    pretrained MobileNetV3).
+
+BATCH SIZES
+-----------
+The paper draft v2 gives 32 (disease training) and 64 (failure head). They are
+set in config.py (BATCH_SIZE, EVAL_BATCH_SIZE).
+
+THE TARGET DATASET AND THE SEAL
+-------------------------------
+TargetDataset gives only the image and its path. It never gives labels. The
+paper says target labels may be used only after predictions are frozen and
+saved, so labels will be read by the final evaluation script, not here.
+
+HOW TO CHECK IT (project root, venv active):
+    python src/dataset.py          quick check (a few images per subset) and a
+                                   GPU memory test with batch size 32
+    python src/dataset.py --full   opens every image of every subset
+
+GPU TEST
+--------
+If a GPU is found, the check also sends one augmented batch (config.BATCH_SIZE
+= 32) through an UNTRAINED MobileNetV3-Small, forwards and backwards, and
+prints the peak GPU memory. This is only a memory test: nothing is trained or
+saved, and no pretrained weights are downloaded.
+"""
+
+import argparse
+import sys
+
+import pandas as pd
+import torch
+from PIL import Image
+from torch.utils.data import DataLoader, Dataset
+from torchvision import transforms as T
+
+from config import (
+    BATCH_SIZE,
+    CLASS_NAMES,
+    CLASS_TO_INDEX,
+    IMAGE_SIZE,
+    MANIFEST_DIR,
+    PROJECT_ROOT,
+    SEED,
+    SPLIT_PROPORTIONS,
+    SPLITS_DIR,
+)
+
+SPLIT_FILE = SPLITS_DIR / "split_assignments.csv"
+MANIFEST_FILE = MANIFEST_DIR / "manifest.csv"
+SUBSETS = list(SPLIT_PROPORTIONS.keys())
+TRAIN_SUBSET = "s_train"          # the only subset that may be augmented
+
+IMAGENET_MEAN = (0.485, 0.456, 0.406)
+IMAGENET_STD = (0.229, 0.224, 0.225)
+
+# Augmentation limits from the paper (Section 3.8)
+FLIP_PROBABILITY = 0.5            # not given in the paper (standard value)
+ROTATION_DEGREES = 15
+ZOOM_RANGE = (0.9, 1.1)           # zoom up to +/-10%
+CONTRAST_RANGE = 0.1              # contrast factor 0.9 to 1.1
+
+
+# ---------------------------------------------------------------------------
+# PART 1: transforms
+# ---------------------------------------------------------------------------
+def _preparation():
+    """Steps shared by every transform (after any augmentation)."""
+    return [
+        T.ToTensor(),                                  # 0..255 -> 0..1, shape 3 x H x W
+        T.Normalize(IMAGENET_MEAN, IMAGENET_STD),
+    ]
+
+
+def build_eval_transform():
+    """Resize to 224 x 224, scale, normalise. No randomness."""
+    return T.Compose([T.Resize((IMAGE_SIZE, IMAGE_SIZE))] + _preparation())
+
+
+def build_train_transform():
+    """Same as the eval transform, plus the mild random augmentation."""
+    return T.Compose([
+        T.Resize((IMAGE_SIZE, IMAGE_SIZE)),
+        T.RandomHorizontalFlip(p=FLIP_PROBABILITY),
+        T.RandomAffine(degrees=ROTATION_DEGREES, scale=ZOOM_RANGE, fill=0),
+        T.ColorJitter(contrast=CONTRAST_RANGE),
+    ] + _preparation())
+
+
+def load_image(relative_path):
+    """Open an image from its path in the manifest (relative to the project
+    root) and make sure it has 3 colour channels."""
+    return Image.open(PROJECT_ROOT / relative_path).convert("RGB")
+
+
+# ---------------------------------------------------------------------------
+# PART 2: datasets
+# ---------------------------------------------------------------------------
+class SourceDataset(Dataset):
+    """The PlantVillage images of ONE subset.
+    Each item is (image tensor, class index 0/1/2, image path)."""
+
+    def __init__(self, subset, augment=False):
+        if subset not in SUBSETS:
+            raise ValueError(f"Unknown subset '{subset}'. Choose from {SUBSETS}.")
+        if augment and subset != TRAIN_SUBSET:
+            raise ValueError("Augmentation is only allowed on s_train "
+                             "(paper: not on validation, calibration or test sets).")
+        if not SPLIT_FILE.exists():
+            sys.exit(f"{SPLIT_FILE} not found. Run make_splits.py first.")
+
+        table = pd.read_csv(SPLIT_FILE)
+        table = table[table["subset"] == subset].sort_values("path").reset_index(drop=True)
+        self.subset = subset
+        self.paths = table["path"].tolist()
+        self.label_names = table["label"].tolist()
+        self.labels = [CLASS_TO_INDEX[name] for name in self.label_names]
+        self.transform = build_train_transform() if augment else build_eval_transform()
+
+    def __len__(self):
+        return len(self.paths)
+
+    def __getitem__(self, index):
+        image = self.transform(load_image(self.paths[index]))
+        return image, self.labels[index], self.paths[index]
+
+
+class TargetDataset(Dataset):
+    """All labelled PP2020 train images (1,821) for the frozen pipeline.
+    Each item is (image tensor, image path). NO labels are returned: the paper
+    keeps target labels sealed until predictions are frozen and saved."""
+
+    def __init__(self):
+        if not MANIFEST_FILE.exists():
+            sys.exit(f"{MANIFEST_FILE} not found. Run audit_dataset.py first.")
+        manifest = pd.read_csv(MANIFEST_FILE, keep_default_na=False)
+        manifest["decode_ok"] = manifest["decode_ok"].astype(str) == "True"
+        target = manifest[(manifest["dataset"] == "target") & manifest["decode_ok"]]
+        self.paths = sorted(target["path"].tolist())
+        self.transform = build_eval_transform()
+
+    def __len__(self):
+        return len(self.paths)
+
+    def __getitem__(self, index):
+        return self.transform(load_image(self.paths[index])), self.paths[index]
+
+
+# ---------------------------------------------------------------------------
+# PART 3: loaders (batches)
+# ---------------------------------------------------------------------------
+def make_loader(dataset, batch_size, shuffle=False, num_workers=0, seed=SEED):
+    """Wrap a dataset so the model receives batches.
+    batch_size has no default on purpose: the paper draft gives 32 (disease
+    training) and 64 (failure head); the values live in config.py.
+    shuffle=True mixes the order each epoch (use it only for training); the
+    mixing is seeded so a run can be repeated.
+    num_workers=0 loads images in the main process (safest on Windows)."""
+    generator = torch.Generator()
+    generator.manual_seed(seed)
+    return DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        num_workers=num_workers,
+        generator=generator if shuffle else None,
+        pin_memory=torch.cuda.is_available(),
+    )
+
+
+def get_source_loader(subset, batch_size, train=False, num_workers=0):
+    """Loader for one source subset. train=True means: augmentation + shuffling
+    (allowed for s_train only)."""
+    dataset = SourceDataset(subset, augment=train)
+    return make_loader(dataset, batch_size, shuffle=train, num_workers=num_workers)
+
+
+# ---------------------------------------------------------------------------
+# PART 4: self-check
+# ---------------------------------------------------------------------------
+def check_tensor(image):
+    ok = tuple(image.shape) == (3, IMAGE_SIZE, IMAGE_SIZE) and image.dtype == torch.float32
+    return ok and bool(torch.isfinite(image).all())
+
+
+def gpu_check(batch_size):
+    """Send one augmented batch through an untrained MobileNetV3-Small on the GPU
+    (forward + backward) to confirm the batch size fits in GPU memory."""
+    print("\nGPU test:")
+    if not torch.cuda.is_available():
+        print("  No GPU found. PyTorch will use the CPU (slow).")
+        print("  Usually this means the CPU-only PyTorch was installed. Install the")
+        print("  CUDA build from pytorch.org for your NVIDIA GPU.")
+        return True
+    from torchvision.models import mobilenet_v3_small
+
+    device = torch.device("cuda")
+    total_gb = torch.cuda.get_device_properties(0).total_memory / 1024 ** 3
+    print(f"  GPU: {torch.cuda.get_device_name(0)} ({total_gb:.1f} GB)")
+    try:
+        model = mobilenet_v3_small(weights=None).to(device)   # untrained, no download
+        model.train()
+        loader = make_loader(SourceDataset(TRAIN_SUBSET, augment=True), batch_size, shuffle=True)
+        images, _, _ = next(iter(loader))
+        images = images.to(device)
+        torch.cuda.reset_peak_memory_stats()
+        model(images).float().mean().backward()               # throwaway pass
+        torch.cuda.synchronize()
+        peak_gb = torch.cuda.max_memory_allocated() / 1024 ** 3
+        print(f"  Batch of {len(images)}: forward + backward OK, "
+              f"peak GPU memory {peak_gb:.2f} GB of {total_gb:.1f} GB")
+        return True
+    except torch.cuda.OutOfMemoryError:
+        print(f"  CUDA out of memory with batch size {batch_size}. "
+              "Set BATCH_SIZE = 16 in config.py and run again.")
+        return False
+
+
+def self_check(full):
+    print("Checking the data loader...\n")
+    table = pd.read_csv(SPLIT_FILE) if SPLIT_FILE.exists() else sys.exit(
+        f"{SPLIT_FILE} not found. Run make_splits.py first.")
+    all_ok = True
+
+    print(f"{'subset':<15}{'images':>8}{'in file':>9}   classes (healthy / scab / rust)")
+    for subset in SUBSETS:
+        dataset = SourceDataset(subset)
+        in_file = int((table["subset"] == subset).sum())
+        counts = [dataset.labels.count(CLASS_TO_INDEX[name]) for name in CLASS_NAMES]
+        status = "OK" if len(dataset) == in_file else "MISMATCH"
+        all_ok &= status == "OK"
+        print(f"{subset:<15}{len(dataset):>8}{in_file:>9}   {counts}  {status}")
+
+        indices = range(len(dataset)) if full else range(min(4, len(dataset)))
+        for index in indices:
+            image, label, path = dataset[index]
+            if not check_tensor(image):
+                print(f"   PROBLEM with {path}: shape {tuple(image.shape)}")
+                all_ok = False
+
+    # the training transform (augmentation) on a few s_train images
+    train_set = SourceDataset(TRAIN_SUBSET, augment=True)
+    batch_images, batch_labels, _ = next(iter(make_loader(train_set, batch_size=4, shuffle=True)))
+    train_ok = tuple(batch_images.shape) == (4, 3, IMAGE_SIZE, IMAGE_SIZE)
+    all_ok &= train_ok
+    print(f"\nTraining batch (augmented, shuffled): shape {tuple(batch_images.shape)}, "
+          f"labels {batch_labels.tolist()}  {'OK' if train_ok else 'PROBLEM'}")
+
+    # augmentation must be refused on other subsets
+    try:
+        SourceDataset("s_test", augment=True)
+        print("PROBLEM: augmentation was allowed on s_test")
+        all_ok = False
+    except ValueError:
+        print("Augmentation on s_test is refused  OK")
+
+    # the target dataset: only images, no labels
+    target = TargetDataset()
+    item = target[0]
+    target_ok = len(item) == 2 and check_tensor(item[0])
+    if full:
+        for index in range(len(target)):
+            target_ok &= check_tensor(target[index][0])
+    all_ok &= target_ok
+    print(f"Target dataset: {len(target)} images, each item = (image, path), no labels  "
+          f"{'OK' if target_ok else 'PROBLEM'}")
+
+    all_ok &= gpu_check(BATCH_SIZE)
+
+    print("\n" + ("ALL CHECKS PASSED" if all_ok else "SOME CHECKS FAILED, send this output for help"))
+    return all_ok
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--full", action="store_true",
+                        help="open every image of every subset (slower)")
+    arguments = parser.parse_args()
+    sys.exit(0 if self_check(arguments.full) else 1)
+
+
+model.py:
+
+"""\
+model.py  -  Step 5a: the main model (the disease classifier).\
+\
+WHAT THIS FILE DOES\
+\-------------------\
+It defines the model that looks at a leaf photo and answers: healthy, scab or\
+rust (paper draft v2, Section 3.7). It only DEFINES the model. Training is in\
+train_classifier.py.\
+\
+THE MODEL\
+\---------\
+&#x20; photo (3 x 224 x 224)\
+&#x20;   -> MobileNetV3-Small, already trained on ImageNet photos\
+&#x20;      (the part that "reads" the picture; it ends with 576 numbers per image)\
+&#x20;   -> average over the picture  -> 576 numbers\
+&#x20;   -> dropout 0.20              (randomly hides 20% of the numbers while\
+&#x20;                                 training, so the model does not memorise)\
+&#x20;   -> one linear layer with 3 outputs ("logits": one score each for\
+&#x20;      healthy, scab, rust)\
+The class with the highest score is the prediction.\
+\
+TWO TRAINING MODES (paper Section 3.10)\
+\---------------------------------------\
+&#x20; Phase A: only the 3-output layer can change; the MobileNet part is locked.\
+&#x20; Phase B: the 3-output layer plus the LAST part of MobileNet can change\
+&#x20;          (the final three inverted-residual blocks and the final 1x1\
+&#x20;          convolution, modules 9, 10, 11 and 12 of the network).\
+In both phases the "BatchNorm" layers stay frozen: they keep the statistics\
+they learned on ImageNet and never update them.\
+\
+extract_features() returns the 576 numbers per image. The failure head (a later\
+step) will use them together with the 3 scores.\
+\
+PARAMETER COUNT (paper Appendix B)\
+\----------------------------------\
+The paper planned 939,120 (MobileNet part) + 1,731 (output layer) = 940,851,\
+and says the exact number must be confirmed from the real implementation.\
+The PyTorch (torchvision) MobileNetV3-Small has a slightly different number\
+for its MobileNet part. Running this file prints both, so the difference can be\
+reported honestly in the paper.\
+\
+HOW TO CHECK IT (project root, venv active):\
+&#x20;   python src/model.py\
+(builds the model without downloading weights, prints the parameter counts and\
+runs the checks)\
+"""\
+\
+import torch\
+from torch import nn\
+from torchvision.models import MobileNet_V3_Small_Weights, mobilenet_v3_small\
+\
+from config import DISEASE_DROPOUT, FEATURE_DIM, IMAGE_SIZE, NUM_CLASSES\
+\
+\# Modules of torchvision's MobileNetV3-Small "features" list that are trained in\
+\# phase B: three inverted-residual blocks (9, 10, 11) and the final 1x1 conv (12).\
+PHASE_B_MODULES = (9, 10, 11, 12)\
+\
+\# Numbers planned in the paper (Appendix B)\
+PAPER_BACKBONE_PARAMS = 939_120\
+PAPER_HEAD_PARAMS = 1_731\
+PAPER_CLASSIFIER_PARAMS = 940_851\
+\
+\
+class DiseaseClassifier(nn.Module):\
+&#x20;   def \_\_init\_\_(self, pretrained=True):\
+&#x20;       """pretrained=True downloads the ImageNet weights the first time (about\
+&#x20;       10 MB) and needs internet. pretrained=False gives a random model, only\
+&#x20;       for quick tests."""\
+&#x20;       super().\_\_init\_\_()\
+&#x20;       weights = MobileNet_V3_Small_Weights.IMAGENET1K_V1 if pretrained else None\
+&#x20;       self.features = mobilenet_v3_small(weights=weights).features   # the MobileNet part\
+&#x20;       self.pool = nn.AdaptiveAvgPool2d(1)                            # average over the picture\
+&#x20;       self.dropout = nn.Dropout(DISEASE_DROPOUT)\
+&#x20;       self.fc = nn.Linear(FEATURE_DIM, NUM_CLASSES)                  # 576 -> 3 scores\
+\
+&#x20;   \# --- forward passes -----------------------------------------------------\
+&#x20;   def extract_features(self, images):\
+&#x20;       """576 numbers per image (before dropout and the output layer)."""\
+&#x20;       return torch.flatten(self.pool(self.features(images)), 1)\
+\
+&#x20;   def forward(self, images):\
+&#x20;       """3 scores (logits) per image: healthy, scab, rust."""\
+&#x20;       return self.fc(self.dropout(self.extract_features(images)))\
+\
+&#x20;   \# --- freezing -----------------------------------------------------------\
+&#x20;   def set_phase_a(self):\
+&#x20;       """Lock the whole MobileNet part. Only the output layer can learn."""\
+&#x20;       for parameter in self.features.parameters():\
+&#x20;           parameter.requires_grad = False\
+&#x20;       for parameter in self.fc.parameters():\
+&#x20;           parameter.requires_grad = True\
+\
+&#x20;   def set_phase_b(self):\
+&#x20;       """Also let the last part of MobileNet learn (BatchNorm stays frozen)."""\
+&#x20;       self.set_phase_a()\
+&#x20;       for index in PHASE_B_MODULES:\
+&#x20;           for parameter in self.features[index].parameters():\
+&#x20;               parameter.requires_grad = True\
+&#x20;       for module in self.features.modules():\
+&#x20;           if isinstance(module, nn.BatchNorm2d):\
+&#x20;               for parameter in module.parameters():\
+&#x20;                   parameter.requires_grad = False\
+\
+&#x20;   def train(self, mode=True):\
+&#x20;       """Normal train()/eval() switch, except that the BatchNorm layers of the\
+&#x20;       MobileNet part ALWAYS stay in evaluation mode (frozen statistics)."""\
+&#x20;       super().train(mode)\
+&#x20;       for module in self.features.modules():\
+&#x20;           if isinstance(module, nn.BatchNorm2d):\
+&#x20;               module.eval()\
+&#x20;       return self\
+\
+\
+def count_parameters(model):\
+&#x20;   """Return (all parameters, parameters that can currently learn)."""\
+&#x20;   total = sum(p.numel() for p in model.parameters())\
+&#x20;   trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)\
+&#x20;   return total, trainable\
+\
+\
+def parameter_report(model):\
+&#x20;   backbone = sum(p.numel() for p in model.features.parameters())\
+&#x20;   head = sum(p.numel() for p in model.fc.parameters())\
+&#x20;   return backbone, head, backbone + head\
+\
+\
+\# ---------------------------------------------------------------------------\
+\# Self-check\
+\# ---------------------------------------------------------------------------\
+def self_check():\
+&#x20;   print("Building the model (no weights downloaded)...\n")\
+&#x20;   model = DiseaseClassifier(pretrained=False)\
+&#x20;   backbone, head, total = parameter_report(model)\
+\
+&#x20;   print(f"{'part':<28}{'this model':>12}{'paper plan':>12}{'difference':>12}")\
+&#x20;   for name, mine, paper in [("MobileNet part", backbone, PAPER_BACKBONE_PARAMS),\
+&#x20;                             ("3-output layer", head, PAPER_HEAD_PARAMS),\
+&#x20;                             ("disease classifier total", total, PAPER_CLASSIFIER_PARAMS)]:\
+&#x20;       print(f"{name:<28}{mine:>12,}{paper:>12,}{mine - paper:>12,}")\
+&#x20;   print("(a difference in the MobileNet part is expected: PyTorch and Keras build")\
+&#x20;   print(" MobileNetV3-Small slightly differently. Report the PyTorch number.)\n")\
+\
+&#x20;   ok = True\
+&#x20;   images = torch.randn(4, 3, IMAGE_SIZE, IMAGE_SIZE)\
+&#x20;   model.eval()\
+&#x20;   features = model.extract_features(images)\
+&#x20;   logits = model(images)\
+&#x20;   shape_ok = tuple(features.shape) == (4, FEATURE_DIM) and tuple(logits.shape) == (4, NUM_CLASSES)\
+&#x20;   ok &= shape_ok\
+&#x20;   print(f"Features per image: {tuple(features.shape[1:])}, scores per image: "\
+&#x20;         f"{tuple(logits.shape[1:])}  {'OK' if shape_ok else 'PROBLEM'}")\
+\
+&#x20;   model.set_phase_a()\
+&#x20;   \_, trainable_a = count_parameters(model)\
+&#x20;   a_ok = trainable_a == head\
+&#x20;   ok &= a_ok\
+&#x20;   print(f"Phase A can change {trainable_a:,} parameters (expected {head:,})  "\
+&#x20;         f"{'OK' if a_ok else 'PROBLEM'}")\
+\
+&#x20;   model.set_phase_b()\
+&#x20;   \_, trainable_b = count_parameters(model)\
+&#x20;   block_params = sum(p.numel() for index in PHASE_B_MODULES\
+&#x20;                      for p in model.features[index].parameters())\
+&#x20;   batchnorm_params = sum(p.numel() for index in PHASE_B_MODULES\
+&#x20;                          for m in model.features[index].modules()\
+&#x20;                          if isinstance(m, nn.BatchNorm2d) for p in m.parameters())\
+&#x20;   expected_b = head + block_params - batchnorm_params\
+&#x20;   b_ok = trainable_b == expected_b\
+&#x20;   ok &= b_ok\
+&#x20;   print(f"Phase B can change {trainable_b:,} parameters (expected {expected_b:,}, "\
+&#x20;         f"BatchNorm excluded)  {'OK' if b_ok else 'PROBLEM'}")\
+\
+&#x20;   model.train()\
+&#x20;   bn_modes = [m.training for m in model.features.modules() if isinstance(m, nn.BatchNorm2d)]\
+&#x20;   bn_ok = len(bn_modes) > 0 and not any(bn_modes)\
+&#x20;   ok &= bn_ok\
+&#x20;   print(f"BatchNorm layers stay frozen in train mode ({len(bn_modes)} layers)  "\
+&#x20;         f"{'OK' if bn_ok else 'PROBLEM'}")\
+&#x20;   dropout_ok = model.dropout.training\
+&#x20;   ok &= dropout_ok\
+&#x20;   print(f"Dropout is active in train mode  {'OK' if dropout_ok else 'PROBLEM'}")\
+\
+&#x20;   print("\n" + ("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED, send this output for help"))\
+&#x20;   return ok\
+\
+\
+if \_\_name\_\_ == "\_\_main\_\_":\
+&#x20;   raise SystemExit(0 if self_check() else 1)
+
+
+
+train_classifier.py
+
+"""\
+train_classifier.py  -  Step 5b: trains the main model (disease classifier) in\
+the two rounds of the paper draft v2, Section 3.10.\
+\
+WHAT THIS FILE DOES\
+\-------------------\
+It teaches the model to say healthy / scab / rust, using ONLY the source images:\
+&#x20; \* s_train : the images the model learns from\
+&#x20; \* s_val   : images used to check progress, to pick the best version and to\
+&#x20;             decide when to stop\
+It never opens s_reliability, s_calibration, s_test or any PP2020 image.\
+\
+ROUND 1  "Phase A" (head warm-up)\
+&#x20;   Only the 3-output layer learns (the MobileNet part is locked).\
+&#x20;   Adam, learning rate 1e-3, at most 12 passes (epochs) over s_train.\
+&#x20;   The best version = the one with the lowest validation loss.\
+&#x20;   Training stops early if the validation loss has not improved for 3 epochs.\
+ROUND 2  "Phase B" (fine-tuning)\
+&#x20;   The last part of MobileNet and the 3-output layer learn, gently.\
+&#x20;   AdamW, learning rate 3e-5, weight decay 1e-5, at most 20 epochs.\
+&#x20;   The best version = the one with the highest validation macro-F1\
+&#x20;   (the average of the F1 scores of the three classes, so rust counts as much\
+&#x20;   as healthy). Early stop after 5 epochs without improvement.\
+&#x20;   Phase B starts from the best model of phase A.\
+\
+LOSS\
+\----\
+Class-weighted cross-entropy. Rust has far fewer images than healthy, so a\
+mistake on a rust image counts more. Weight of class c = N / (3 x n_c), where N\
+is the number of s_train images and n_c the number of s_train images of class c.\
+The weights are computed from s_train only.\
+\
+WHAT IT SAVES\
+\-------------\
+&#x20; models/disease_seed\<S>\_phaseA.pt          best model after round 1\
+&#x20; models/disease_seed\<S>\_phaseB.pt          best model after round 2 (the final classifier)\
+&#x20; results/disease_seed\<S>\_training_log.csv  one row per epoch\
+&#x20; results/disease_seed\<S>\_run_record.json   seed, settings, library versions,\
+&#x20;                                           data hashes, parameter counts, results\
+(models/ is ignored by Git; results/ is kept.)\
+Existing files are never overwritten unless you add --overwrite.\
+\
+HOW TO RUN (project root, venv active, GPU PyTorch installed):\
+&#x20;   python src/train_classifier.py                  both rounds, seed 42\
+&#x20;   python src/train_classifier.py --seed 43        another seed\
+&#x20;   python src/train_classifier.py --phase A        round 1 only\
+&#x20;   python src/train_classifier.py --phase B        round 2 only (needs the phase A file)\
+The first run downloads the ImageNet weights (about 10 MB), so it needs internet.\
+"""\
+\
+import argparse\
+import copy\
+import json\
+import platform\
+import random\
+import sys\
+import time\
+\
+import numpy as np\
+import pandas as pd\
+import sklearn\
+import torch\
+import torchvision\
+from sklearn.metrics import confusion_matrix, f1_score\
+from torch import nn\
+from tqdm import tqdm\
+\
+from config import (\
+&#x20;   BATCH_SIZE,\
+&#x20;   CLASS_NAMES,\
+&#x20;   EVAL_BATCH_SIZE,\
+&#x20;   MANIFEST_DIR,\
+&#x20;   MODELS_DIR,\
+&#x20;   NUM_CLASSES,\
+&#x20;   PHASE_A_LR,\
+&#x20;   PHASE_A_MAX_EPOCHS,\
+&#x20;   PHASE_A_PATIENCE,\
+&#x20;   PHASE_B_LR,\
+&#x20;   PHASE_B_MAX_EPOCHS,\
+&#x20;   PHASE_B_PATIENCE,\
+&#x20;   PHASE_B_WEIGHT_DECAY,\
+&#x20;   RESULTS_DIR,\
+&#x20;   SEED,\
+&#x20;   SPLITS_DIR,\
+&#x20;   make_folders,\
+)\
+from dataset import SourceDataset, make_loader\
+from model import DiseaseClassifier, count_parameters, parameter_report\
+\
+\
+\# ---------------------------------------------------------------------------\
+\# helpers\
+\# ---------------------------------------------------------------------------\
+def set_seed(seed):\
+&#x20;   """Fix every random number generator so the run can be repeated."""\
+&#x20;   random.seed(seed)\
+&#x20;   np.random.seed(seed)\
+&#x20;   torch.manual_seed(seed)\
+&#x20;   torch.cuda.manual_seed_all(seed)\
+&#x20;   torch.backends.cudnn.benchmark = False\
+\
+\
+def class_weights_from_labels(labels, device):\
+&#x20;   """w_c = N / (C x n_c), computed from the s_train labels only."""\
+&#x20;   counts = np.bincount(labels, minlength=NUM_CLASSES).astype(float)\
+&#x20;   weights = len(labels) / (NUM_CLASSES \* counts)\
+&#x20;   return torch.tensor(weights, dtype=torch.float32, device=device), counts\
+\
+\
+def first_word(path):\
+&#x20;   """The hash stored in a .sha256 sidecar file, or 'not found'."""\
+&#x20;   return path.read_text().split()[0] if path.exists() else "not found"\
+\
+\
+def train_one_epoch(model, loader, optimizer, weights, device):\
+&#x20;   """One pass over s_train. Returns the weighted average training loss."""\
+&#x20;   model.train()\
+&#x20;   loss_sum, weight_sum = 0.0, 0.0\
+&#x20;   for images, labels, \_ in tqdm(loader, leave=False, unit="batch"):\
+&#x20;       images, labels = images.to(device), labels.to(device)\
+&#x20;       optimizer.zero_grad(set_to_none=True)\
+&#x20;       logits = model(images)\
+&#x20;       batch_loss = nn.functional.cross_entropy(logits, labels, weight=weights, reduction="sum")\
+&#x20;       batch_weight = weights[labels].sum()\
+&#x20;       (batch_loss / batch_weight).backward()\
+&#x20;       optimizer.step()\
+&#x20;       loss_sum += batch_loss.item()\
+&#x20;       weight_sum += batch_weight.item()\
+&#x20;   return loss_sum / weight_sum\
+\
+\
+@torch.no_grad()\
+def evaluate(model, loader, weights, device):\
+&#x20;   """Weighted loss, accuracy and macro-F1 on a loader (here: s_val)."""\
+&#x20;   model.eval()\
+&#x20;   loss_sum, weight_sum = 0.0, 0.0\
+&#x20;   all_labels, all_predictions = [], []\
+&#x20;   for images, labels, \_ in loader:\
+&#x20;       images, labels = images.to(device), labels.to(device)\
+&#x20;       logits = model(images)\
+&#x20;       loss_sum += nn.functional.cross_entropy(logits, labels, weight=weights, reduction="sum").item()\
+&#x20;       weight_sum += weights[labels].sum().item()\
+&#x20;       all_labels.extend(labels.cpu().tolist())\
+&#x20;       all_predictions.extend(logits.argmax(dim=1).cpu().tolist())\
+&#x20;   labels_array, predictions_array = np.array(all_labels), np.array(all_predictions)\
+&#x20;   return {\
+&#x20;       "loss": loss_sum / weight_sum,\
+&#x20;       "accuracy": float((labels_array == predictions_array).mean()),\
+&#x20;       "macro_f1": float(f1_score(labels_array, predictions_array, average="macro",\
+&#x20;                                  labels=list(range(NUM_CLASSES)), zero_division=0)),\
+&#x20;       "labels": labels_array,\
+&#x20;       "predictions": predictions_array,\
+&#x20;   }\
+\
+\
+def cpu_copy(state_dict):\
+&#x20;   return {key: value.detach().cpu().clone() for key, value in state_dict.items()}\
+\
+\
+def fit_phase(name, model, optimizer, train_loader, val_loader, weights, device,\
+&#x20;             max_epochs, patience, monitor, log_rows):\
+&#x20;   """Train one phase with early stopping. monitor is 'loss' (lower is better)\
+&#x20;   or 'macro_f1' (higher is better). Puts the BEST version back into the model."""\
+&#x20;   lower_is_better = monitor == "loss"\
+&#x20;   best_value = float("inf") if lower_is_better else -float("inf")\
+&#x20;   best_state, best_epoch, epochs_without_improvement = None, 0, 0\
+&#x20;   best_metrics = None\
+&#x20;   started = time.time()\
+\
+&#x20;   for epoch in range(1, max_epochs + 1):\
+&#x20;       epoch_start = time.time()\
+&#x20;       train_loss = train_one_epoch(model, train_loader, optimizer, weights, device)\
+&#x20;       metrics = evaluate(model, val_loader, weights, device)\
+&#x20;       value = metrics[monitor]\
+&#x20;       improved = value < best_value if lower_is_better else value > best_value\
+&#x20;       if improved:\
+&#x20;           best_value, best_epoch, best_metrics = value, epoch, metrics\
+&#x20;           best_state = cpu_copy(model.state_dict())\
+&#x20;           epochs_without_improvement = 0\
+&#x20;       else:\
+&#x20;           epochs_without_improvement += 1\
+\
+&#x20;       log_rows.append({\
+&#x20;           "phase": name, "epoch": epoch, "train_loss": round(train_loss, 5),\
+&#x20;           "val_loss": round(metrics["loss"], 5), "val_accuracy": round(metrics["accuracy"], 5),\
+&#x20;           "val_macro_f1": round(metrics["macro_f1"], 5), "best_so_far": improved,\
+&#x20;           "seconds": round(time.time() - epoch_start, 1),\
+&#x20;       })\
+&#x20;       print(f"  [{name}] epoch {epoch:>2}/{max_epochs}  train loss {train_loss:.4f}  "\
+&#x20;             f"val loss {metrics['loss']:.4f}  val acc {metrics['accuracy']:.3f}  "\
+&#x20;             f"val macro-F1 {metrics['macro_f1']:.3f}  {'<- best' if improved else ''}")\
+&#x20;       if epochs_without_improvement >= patience:\
+&#x20;           print(f"  [{name}] stopping early: no improvement of val {monitor} for {patience} epochs")\
+&#x20;           break\
+\
+&#x20;   model.load_state_dict(best_state)\
+&#x20;   print(f"  [{name}] best epoch: {best_epoch} (val {monitor} {best_value:.4f})")\
+&#x20;   return {\
+&#x20;       "best_epoch": best_epoch, "monitor": f"val\_{monitor}", "best_value": best_value,\
+&#x20;       "epochs_run": epoch, "seconds": round(time.time() - started, 1),\
+&#x20;       "val_accuracy": best_metrics["accuracy"], "val_macro_f1": best_metrics["macro_f1"],\
+&#x20;       "val_loss": best_metrics["loss"],\
+&#x20;   }, best_metrics\
+\
+\
+def save_checkpoint(path, model, seed, phase, result, weights_list):\
+&#x20;   torch.save({"state_dict": cpu_copy(model.state_dict()), "seed": seed, "phase": phase,\
+&#x20;               "result": result, "class_weights": weights_list, "class_names": CLASS_NAMES}, path)\
+\
+\
+def print_confusion(metrics):\
+&#x20;   matrix = confusion_matrix(metrics["labels"], metrics["predictions"], labels=list(range(NUM_CLASSES)))\
+&#x20;   print("  Confusion matrix on s_val (rows = true class, columns = predicted):")\
+&#x20;   print("  " + " " \* 10 + "".join(f"{name:>10}" for name in CLASS_NAMES))\
+&#x20;   for name, row in zip(CLASS_NAMES, matrix):\
+&#x20;       print("  " + f"{name:<10}" + "".join(f"{value:>10}" for value in row))\
+\
+\
+\# ---------------------------------------------------------------------------\
+\# main\
+\# ---------------------------------------------------------------------------\
+def main():\
+&#x20;   parser = argparse.ArgumentParser()\
+&#x20;   parser.add_argument("--seed", type=int, default=SEED)\
+&#x20;   parser.add_argument("--phase", choices=["A", "B", "both"], default="both")\
+&#x20;   parser.add_argument("--num-workers", type=int, default=0,\
+&#x20;                       help="image loading processes (0 is safest on Windows)")\
+&#x20;   parser.add_argument("--no-pretrained", action="store_true",\
+&#x20;                       help="random start instead of ImageNet weights (tests only)")\
+&#x20;   parser.add_argument("--overwrite", action="store_true")\
+&#x20;   args = parser.parse_args()\
+\
+&#x20;   make_folders()\
+&#x20;   path_a = MODELS_DIR / f"disease_seed{args.seed}\_phaseA.pt"\
+&#x20;   path_b = MODELS_DIR / f"disease_seed{args.seed}\_phaseB.pt"\
+&#x20;   log_path = RESULTS_DIR / f"disease_seed{args.seed}\_training_log.csv"\
+&#x20;   record_path = RESULTS_DIR / f"disease_seed{args.seed}\_run_record.json"\
+\
+&#x20;   run_a = args.phase in ("A", "both")\
+&#x20;   run_b = args.phase in ("B", "both")\
+&#x20;   for run, path in ((run_a, path_a), (run_b, path_b)):\
+&#x20;       if run and path.exists() and not args.overwrite:\
+&#x20;           sys.exit(f"{path} already exists. Use --overwrite only if you really want to train again.")\
+&#x20;   if args.phase == "B" and not path_a.exists():\
+&#x20;       sys.exit(f"{path_a} not found. Run phase A first.")\
+\
+&#x20;   device = torch.device("cuda" if torch.cuda.is_available() else "cpu")\
+&#x20;   if device.type == "cpu":\
+&#x20;       print("WARNING: no GPU found, training on the CPU will be slow.\n")\
+&#x20;   set_seed(args.seed)\
+\
+&#x20;   train_set = SourceDataset("s_train", augment=True)\
+&#x20;   val_set = SourceDataset("s_val")\
+&#x20;   train_loader = make_loader(train_set, BATCH_SIZE, shuffle=True,\
+&#x20;                              num_workers=args.num_workers, seed=args.seed)\
+&#x20;   val_loader = make_loader(val_set, EVAL_BATCH_SIZE, shuffle=False, num_workers=args.num_workers)\
+&#x20;   weights, counts = class_weights_from_labels(train_set.labels, device)\
+&#x20;   weights_list = [round(float(w), 6) for w in weights.cpu()]\
+\
+&#x20;   print(f"Seed {args.seed}, device {device}, batch size {BATCH_SIZE}")\
+&#x20;   print(f"s_train: {len(train_set)} images {dict(zip(CLASS_NAMES, counts.astype(int).tolist()))}")\
+&#x20;   print(f"s_val  : {len(val_set)} images")\
+&#x20;   print(f"Class weights (healthy, scab, rust): {weights_list}\n")\
+\
+&#x20;   model = DiseaseClassifier(pretrained=not args.no_pretrained).to(device)\
+&#x20;   backbone_params, head_params, classifier_params = parameter_report(model)\
+&#x20;   print(f"Parameters: MobileNet part {backbone_params:,} + output layer {head_params:,} "\
+&#x20;         f"= {classifier_params:,}\n")\
+\
+&#x20;   log_rows, results = [], {}\
+&#x20;   final_metrics = None\
+\
+&#x20;   if run_a:\
+&#x20;       print("ROUND 1 (phase A): only the 3-output layer learns")\
+&#x20;       model.set_phase_a()\
+&#x20;       \_, trainable = count_parameters(model)\
+&#x20;       print(f"  parameters that can learn: {trainable:,}")\
+&#x20;       optimizer = torch.optim.Adam([p for p in model.parameters() if p.requires_grad], lr=PHASE_A_LR)\
+&#x20;       results["phase_a"], final_metrics = fit_phase(\
+&#x20;           "A", model, optimizer, train_loader, val_loader, weights, device,\
+&#x20;           PHASE_A_MAX_EPOCHS, PHASE_A_PATIENCE, "loss", log_rows)\
+&#x20;       results["phase_a"]["trainable_parameters"] = trainable\
+&#x20;       save_checkpoint(path_a, model, args.seed, "A", results["phase_a"], weights_list)\
+&#x20;       print(f"  saved {path_a.name}\n")\
+&#x20;   else:\
+&#x20;       model.load_state_dict(torch.load(path_a, map_location="cpu")["state_dict"])\
+&#x20;       print(f"Loaded {path_a.name}\n")\
+\
+&#x20;   if run_b:\
+&#x20;       print("ROUND 2 (phase B): last part of MobileNet + output layer learn, gently")\
+&#x20;       model.set_phase_b()\
+&#x20;       \_, trainable = count_parameters(model)\
+&#x20;       print(f"  parameters that can learn: {trainable:,} (BatchNorm frozen)")\
+&#x20;       optimizer = torch.optim.AdamW([p for p in model.parameters() if p.requires_grad],\
+&#x20;                                     lr=PHASE_B_LR, weight_decay=PHASE_B_WEIGHT_DECAY)\
+&#x20;       results["phase_b"], final_metrics = fit_phase(\
+&#x20;           "B", model, optimizer, train_loader, val_loader, weights, device,\
+&#x20;           PHASE_B_MAX_EPOCHS, PHASE_B_PATIENCE, "macro_f1", log_rows)\
+&#x20;       results["phase_b"]["trainable_parameters"] = trainable\
+&#x20;       save_checkpoint(path_b, model, args.seed, "B", results["phase_b"], weights_list)\
+&#x20;       print(f"  saved {path_b.name}\n")\
+\
+&#x20;   if final_metrics is not None:\
+&#x20;       print_confusion(final_metrics)\
+\
+&#x20;   \# --- records -------------------------------------------------------------\
+&#x20;   if log_rows:\
+&#x20;       new_log = pd.DataFrame(log_rows)\
+&#x20;       if log_path.exists() and not (run_a and run_b) and not args.overwrite:\
+&#x20;           new_log = pd.concat([pd.read_csv(log_path), new_log], ignore_index=True)\
+&#x20;       new_log.to_csv(log_path, index=False, lineterminator="\n")\
+\
+&#x20;   record = {\
+&#x20;       "seed": args.seed, "phase_run": args.phase, "device": str(device),\
+&#x20;       "gpu": torch.cuda.get_device_name(0) if device.type == "cuda" else None,\
+&#x20;       "peak_gpu_memory_gb": round(torch.cuda.max_memory_allocated() / 1024 \*\* 3, 2)\
+&#x20;       if device.type == "cuda" else None,\
+&#x20;       "pretrained_imagenet_weights": not args.no_pretrained,\
+&#x20;       "batch_size": BATCH_SIZE, "eval_batch_size": EVAL_BATCH_SIZE,\
+&#x20;       "class_weights": dict(zip(CLASS_NAMES, weights_list)),\
+&#x20;       "train_images": len(train_set), "val_images": len(val_set),\
+&#x20;       "parameters": {"mobilenet_part": backbone_params, "output_layer": head_params,\
+&#x20;                      "classifier_total": classifier_params},\
+&#x20;       "manifest_sha256": first_word(MANIFEST_DIR / "manifest.csv.sha256"),\
+&#x20;       "split_sha256": first_word(SPLITS_DIR / "split_assignments.csv.sha256"),\
+&#x20;       "versions": {"python": platform.python_version(), "torch": torch.\_\_version\_\_,\
+&#x20;                    "torchvision": torchvision.\_\_version\_\_, "scikit_learn": sklearn.\_\_version\_\_,\
+&#x20;                    "numpy": np.\_\_version\_\_, "pandas": pd.\_\_version\_\_},\
+&#x20;       "results": results,\
+&#x20;   }\
+&#x20;   if record_path.exists() and args.phase != "both" and not args.overwrite:\
+&#x20;       old = json.loads(record_path.read_text())\
+&#x20;       old["results"].update(results)\
+&#x20;       old["phase_run"] = "A+B"\
+&#x20;       record = {\*\*record, "results": old["results"], "phase_run": old["phase_run"]}\
+&#x20;   record_path.write_text(json.dumps(record, indent=2), encoding="utf-8")\
+&#x20;   print(f"Log   : {log_path}")\
+&#x20;   print(f"Record: {record_path}")\
+&#x20;   print("Only s_train and s_val were used. No other subset and no PP2020 image was opened.")\
+\
+\
+if \_\_name\_\_ == "\_\_main\_\_":\
+&#x20;   main()
+
+
+make_splits.py
+"""
+make_splits.py  -  Step 3: divides the PlantVillage (source) images into the
+five subsets of the paper, keeping duplicate images together.
+
+WHAT THIS FILE DOES (paper, Section 3.4)
+----------------------------------------
+Input : the 2,550 source images listed in manifests/manifest.csv.
+Output: every image gets exactly one subset:
+    s_train        50%   fit the disease classifier
+    s_val          10%   model selection and early stopping
+    s_reliability  15%   train and validate the failure-prediction head
+    s_calibration  10%   temperature scaling and source-only thresholds
+    s_test         15%   untouched in-domain reference
+
+The split is
+  * seeded       : the same seed (config.SEED) always gives the same result.
+  * stratified   : each subset has about the same class mix
+                   (healthy / scab / rust) as the whole source set.
+  * group-aware  : images that are duplicates of each other form a GROUP, and
+                   a whole group always goes into ONE subset. A group is never
+                   cut between, for example, s_train and s_test.
+
+WHERE THE GROUPS COME FROM (these 3 inputs, nothing else)
+---------------------------------------------------------
+  1. Exact copies    : source images with the same SHA-256 in manifest.csv
+                       (the same information as duplicates_exact.csv).
+  2. near_duplicate_review.csv : pairs YOU marked "duplicate" or "unsure".
+  3. sweep_review.csv          : pairs YOU marked "duplicate" or "unsure".
+Groups can chain: if A~B and B~C, then A, B and C are one group.
+A pair with a different label is not special: it is grouped like any other pair
+and the script reports it.
+
+SOURCE IMAGES THAT MATCH A TARGET IMAGE
+---------------------------------------
+If a source image is a duplicate of a PP2020 image (exact copy, or a pair you
+marked duplicate/unsure), the SOURCE image is left out of the split and written
+to splits/source_exclusions.csv (paper rule: target stays untouched). The
+image file itself is never deleted. In your data this list should be empty.
+
+HOW THE IMAGES ARE ASSIGNED
+---------------------------
+For each class: (1) work out how many images each subset should get
+(proportion x class size, rounded so the numbers add up); (2) sort the groups,
+biggest first, with a seeded shuffle among equal sizes; (3) put each group into
+the subset that is currently furthest below its target. Since almost all groups
+are single images, the final counts end up almost exactly on target.
+
+BEFORE IT RUNS
+--------------
+Every row of near_duplicate_review.csv and sweep_review.csv must have a decision
+(duplicate / different / unsure). The script stops and tells you if not.
+
+OUTPUT FILES (in splits/)
+-------------------------
+  split_assignments.csv         path, label, group_id, subset  (the result)
+  split_assignments.csv.sha256  hash of that file
+  groups_multi.csv              every group with more than one image, and why
+  source_exclusions.csv         source images left out (normally empty)
+  split_summary.txt             counts per subset and class, and the checks
+
+Like the manifest, the split is meant to stay fixed. The script refuses to
+overwrite it unless you add --overwrite.
+
+HOW TO RUN (project root, venv active):
+    python src/make_splits.py
+"""
+
+import argparse
+import hashlib
+import random
+import sys
+from collections import Counter, defaultdict
+
+import pandas as pd
+
+from config import (
+    CLASS_NAMES,
+    MANIFEST_DIR,
+    SEED,
+    SPLIT_PROPORTIONS,
+    SPLITS_DIR,
+    make_folders,
+)
+
+MANIFEST_FILE = MANIFEST_DIR / "manifest.csv"
+MANIFEST_SIDECAR = MANIFEST_DIR / "manifest.csv.sha256"
+NEAR_REVIEW_FILE = MANIFEST_DIR / "near_duplicate_review.csv"
+SWEEP_REVIEW_FILE = MANIFEST_DIR / "sweep_review.csv"
+EXACT_FILE = MANIFEST_DIR / "duplicates_exact.csv"
+
+ASSIGN_FILE = SPLITS_DIR / "split_assignments.csv"
+ASSIGN_SIDECAR = SPLITS_DIR / "split_assignments.csv.sha256"
+GROUPS_FILE = SPLITS_DIR / "groups_multi.csv"
+EXCLUSION_FILE = SPLITS_DIR / "source_exclusions.csv"
+SUMMARY_FILE = SPLITS_DIR / "split_summary.txt"
+
+SUBSETS = list(SPLIT_PROPORTIONS.keys())
+VALID_DECISIONS = {"duplicate", "different", "unsure"}
+DUPLICATE_DECISIONS = {"duplicate", "unsure"}   # "unsure" counts as duplicate
+
+
+# ---------------------------------------------------------------------------
+# PART 1: read the inputs
+# ---------------------------------------------------------------------------
+def load_manifest():
+    if not MANIFEST_FILE.exists():
+        sys.exit(f"{MANIFEST_FILE} not found. Run audit_dataset.py first.")
+    manifest = pd.read_csv(MANIFEST_FILE, keep_default_na=False)
+    manifest["decode_ok"] = manifest["decode_ok"].astype(str) == "True"
+    return manifest
+
+
+def load_review(path, name):
+    """Read a review file and make sure every pair has a valid decision."""
+    if not path.exists():
+        sys.exit(f"{path} not found. Run the review step for {name} first.")
+    review = pd.read_csv(path, keep_default_na=False)
+    review["decision"] = review["decision"].astype(str).str.strip().str.lower()
+    empty = review[review["decision"] == ""]
+    invalid = review[(review["decision"] != "") & ~review["decision"].isin(VALID_DECISIONS)]
+    if len(empty) or len(invalid):
+        message = [f"{name}: the decision column is not complete."]
+        if len(empty):
+            message.append(f"  {len(empty)} pairs have no decision, e.g. pair_id {empty['pair_id'].head(5).tolist()}")
+        if len(invalid):
+            message.append(f"  {len(invalid)} pairs have an invalid decision, e.g. pair_id {invalid['pair_id'].head(5).tolist()}")
+        message.append("  Allowed values: duplicate / different / unsure. Fix the csv and run again.")
+        sys.exit("\n".join(message))
+    return review
+
+
+# ---------------------------------------------------------------------------
+# PART 2: find exclusions and build groups
+# ---------------------------------------------------------------------------
+class UnionFind:
+    """Tiny helper that merges images into groups (A~B and B~C -> one group)."""
+
+    def __init__(self, items):
+        self.parent = {item: item for item in items}
+
+    def find(self, item):
+        while self.parent[item] != item:
+            self.parent[item] = self.parent[self.parent[item]]
+            item = self.parent[item]
+        return item
+
+    def union(self, a, b):
+        root_a, root_b = self.find(a), self.find(b)
+        if root_a != root_b:
+            # keep the alphabetically smaller path as root so results are stable
+            if root_a < root_b:
+                self.parent[root_b] = root_a
+            else:
+                self.parent[root_a] = root_b
+
+
+def collect_links(manifest, reviews):
+    """Return (links, exclusions).
+    links      : list of (path_a, path_b, reason), both images are SOURCE images
+    exclusions : dict source_path -> reason (source image matches a target image)"""
+    dataset_of = dict(zip(manifest["path"], manifest["dataset"]))
+    links, exclusions = [], {}
+
+    # 1. exact copies: images that share a SHA-256
+    usable = manifest[manifest["decode_ok"]]
+    for sha, group in usable.groupby("sha256"):
+        if len(group) < 2:
+            continue
+        source_paths = sorted(group[group["dataset"] == "source"]["path"])
+        target_paths = sorted(group[group["dataset"] == "target"]["path"])
+        if target_paths:
+            for path in source_paths:
+                exclusions[path] = f"exact copy of target image {target_paths[0]}"
+        else:
+            for other in source_paths[1:]:
+                links.append((source_paths[0], other, "exact SHA-256 copy"))
+
+    # 2 and 3. pairs you marked duplicate / unsure
+    for review_name, review in reviews:
+        for _, row in review.iterrows():
+            if row["decision"] not in DUPLICATE_DECISIONS:
+                continue
+            a, b = row["path_a"], row["path_b"]
+            kinds = {dataset_of[a], dataset_of[b]}
+            reason = f"{review_name} pair {row['pair_id']} ({row['decision']})"
+            if kinds == {"source"}:
+                links.append((a, b, reason))
+            elif kinds == {"source", "target"}:
+                source_path, target_path = (a, b) if dataset_of[a] == "source" else (b, a)
+                exclusions[source_path] = f"{reason}, matches target image {target_path}"
+            # both target: not part of the source split, ignored here
+    return links, exclusions
+
+
+def build_groups(pool, links):
+    """pool: DataFrame of source images that stay in the split.
+    Returns dict group_id -> list of paths, and dict path -> group_id."""
+    finder = UnionFind(pool["path"].tolist())
+    in_pool = set(pool["path"])
+    used_links = [(a, b, why) for a, b, why in links if a in in_pool and b in in_pool]
+    for a, b, _ in used_links:
+        finder.union(a, b)
+
+    members = defaultdict(list)
+    for path in sorted(pool["path"]):
+        members[finder.find(path)].append(path)
+    ordered = sorted(members.values(), key=lambda paths: paths[0])
+    groups, group_of = {}, {}
+    for number, paths in enumerate(ordered, start=1):
+        group_id = f"g{number:04d}"
+        groups[group_id] = paths
+        for path in paths:
+            group_of[path] = group_id
+    return groups, group_of, used_links
+
+
+# ---------------------------------------------------------------------------
+# PART 3: the split itself
+# ---------------------------------------------------------------------------
+def target_counts(size):
+    """How many of `size` images each subset should get (largest remainder)."""
+    raw = {name: size * SPLIT_PROPORTIONS[name] for name in SUBSETS}
+    counts = {name: int(value) for name, value in raw.items()}
+    leftover = size - sum(counts.values())
+    by_fraction = sorted(SUBSETS, key=lambda name: (-(raw[name] - counts[name]), SUBSETS.index(name)))
+    for name in by_fraction[:leftover]:
+        counts[name] += 1
+    return counts
+
+
+def assign_groups(groups, group_label, rng):
+    """Put every group into one subset, class by class."""
+    subset_of_group = {}
+    wanted = {}
+    for label in CLASS_NAMES:
+        label_groups = sorted(g for g in groups if group_label[g] == label)
+        total = sum(len(groups[g]) for g in label_groups)
+        wanted[label] = target_counts(total)
+        rng.shuffle(label_groups)                                   # seeded shuffle
+        label_groups.sort(key=lambda g: -len(groups[g]))            # biggest first (stable)
+        current = {name: 0 for name in SUBSETS}
+        for group_id in label_groups:
+            deficit = {name: wanted[label][name] - current[name] for name in SUBSETS}
+            best = max(deficit.values())
+            choices = [name for name in SUBSETS if deficit[name] == best]
+            chosen = choices[0] if len(choices) == 1 else rng.choice(choices)
+            subset_of_group[group_id] = chosen
+            current[chosen] += len(groups[group_id])
+    return subset_of_group, wanted
+
+
+# ---------------------------------------------------------------------------
+# PART 4: checks and summary
+# ---------------------------------------------------------------------------
+def sha256_of_file(path):
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def run_checks(assignments, groups, used_links, pool_size):
+    results = []
+    results.append(("every source image in the pool has exactly one subset",
+                    len(assignments) == pool_size and assignments["path"].is_unique
+                    and assignments["subset"].isin(SUBSETS).all()))
+    spans = assignments.groupby("group_id")["subset"].nunique()
+    results.append(("no group is split across subsets", bool((spans == 1).all())))
+    subset_of = dict(zip(assignments["path"], assignments["subset"]))
+    broken = [(a, b) for a, b, _ in used_links if subset_of[a] != subset_of[b]]
+    results.append(("every duplicate pair (exact + reviewed) is in one subset", not broken))
+    return results
+
+
+def build_summary(assignments, wanted, groups, group_label, used_links, exclusions,
+                  checks, manifest_hash, problems):
+    lines = ["SPLIT SUMMARY", "=" * 60, ""]
+    lines.append(f"Seed                    : {SEED}")
+    lines.append(f"Manifest SHA-256 used   : {manifest_hash}")
+    lines.append(f"Source images split     : {len(assignments)}")
+    lines.append(f"Source images excluded  : {len(exclusions)} (see source_exclusions.csv)")
+    multi = {g: p for g, p in groups.items() if len(p) > 1}
+    lines.append(f"Groups                  : {len(groups)} "
+                 f"({len(multi)} with more than one image, "
+                 f"{sum(len(p) for p in multi.values())} images in them)")
+    lines.append(f"Links used for grouping : {len(used_links)}")
+    by_reason = Counter(why.split(" pair ")[0] for _, _, why in used_links)
+    for reason, n in sorted(by_reason.items()):
+        lines.append(f"    {reason:<28} {n}")
+
+    lines += ["", "Images per subset and class (actual / target):"]
+    header = f"  {'subset':<15}" + "".join(f"{label:>16}" for label in CLASS_NAMES) + f"{'total':>10}"
+    lines.append(header)
+    for name in SUBSETS:
+        row = f"  {name:<15}"
+        total = 0
+        for label in CLASS_NAMES:
+            actual = int(((assignments["subset"] == name) & (assignments["label"] == label)).sum())
+            total += actual
+            row += f"{f'{actual} / {wanted[label][name]}':>16}"
+        row += f"{total:>10}"
+        lines.append(row)
+    lines.append("")
+    share = assignments["subset"].value_counts(normalize=True)
+    for name in SUBSETS:
+        lines.append(f"  {name:<15} {100 * share.get(name, 0):5.1f}%  (paper: {100 * SPLIT_PROPORTIONS[name]:.0f}%)")
+
+    lines += ["", "Checks:"]
+    for text, ok in checks:
+        lines.append(f"  {'PASS' if ok else 'FAIL'}  {text}")
+    lines += ["", "Notes:"]
+    lines += [f"  {p}" for p in problems] if problems else ["  none"]
+    return "\n".join(lines) + "\n"
+
+
+# ---------------------------------------------------------------------------
+# MAIN
+# ---------------------------------------------------------------------------
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--overwrite", action="store_true",
+                        help="replace an existing split (use only on purpose)")
+    args = parser.parse_args()
+
+    make_folders()
+    if ASSIGN_FILE.exists() and not args.overwrite:
+        sys.exit(f"{ASSIGN_FILE} already exists. The split is meant to stay fixed. "
+                 "Use --overwrite only if you really want to redo it.")
+
+    manifest = load_manifest()
+    reviews = [("near_duplicate_review", load_review(NEAR_REVIEW_FILE, "near_duplicate_review.csv")),
+               ("sweep_review", load_review(SWEEP_REVIEW_FILE, "sweep_review.csv"))]
+    problems = []
+
+    source = manifest[manifest["dataset"] == "source"]
+    undecodable = source[~source["decode_ok"]]
+    for path in undecodable["path"]:
+        problems.append(f"left out, could not be decoded: {path}")
+
+    links, exclusions = collect_links(manifest, reviews)
+    for path in undecodable["path"]:
+        exclusions.setdefault(path, "could not be decoded")
+
+    pool = source[~source["path"].isin(exclusions)].reset_index(drop=True)
+    groups, group_of, used_links = build_groups(pool, links)
+
+    label_of = dict(zip(pool["path"], pool["label"]))
+    group_label = {}
+    for group_id, paths in groups.items():
+        labels = Counter(label_of[p] for p in paths)
+        if len(labels) > 1:
+            problems.append(f"{group_id} contains different labels {dict(labels)}: "
+                            f"grouped under the most common one")
+        group_label[group_id] = sorted(labels.items(), key=lambda kv: (-kv[1], kv[0]))[0][0]
+
+    rng = random.Random(SEED)
+    subset_of_group, wanted = assign_groups(groups, group_label, rng)
+
+    assignments = pd.DataFrame({
+        "path": pool["path"],
+        "label": pool["label"],
+        "group_id": pool["path"].map(group_of),
+    })
+    assignments["subset"] = assignments["group_id"].map(subset_of_group)
+    assignments = assignments.sort_values("path").reset_index(drop=True)
+
+    checks = run_checks(assignments, groups, used_links, len(pool))
+
+    # --- write the files ---------------------------------------------------
+    assignments.to_csv(ASSIGN_FILE, index=False, lineterminator="\n")
+    ASSIGN_SIDECAR.write_text(f"{sha256_of_file(ASSIGN_FILE)}  split_assignments.csv\n", encoding="utf-8")
+
+    link_text = defaultdict(list)
+    for a, b, why in used_links:
+        link_text[group_of[a]].append(why)
+    rows = [{
+        "group_id": gid, "size": len(paths), "label": group_label[gid],
+        "subset": subset_of_group[gid], "reasons": " | ".join(sorted(set(link_text[gid]))),
+        "paths": ";".join(paths),
+    } for gid, paths in groups.items() if len(paths) > 1]
+    pd.DataFrame(rows, columns=["group_id", "size", "label", "subset", "reasons", "paths"]).to_csv(
+        GROUPS_FILE, index=False, lineterminator="\n")
+
+    pd.DataFrame(sorted(exclusions.items()), columns=["path", "reason"]).to_csv(
+        EXCLUSION_FILE, index=False, lineterminator="\n")
+
+    manifest_hash = MANIFEST_SIDECAR.read_text().split()[0] if MANIFEST_SIDECAR.exists() else "sidecar not found"
+    summary = build_summary(assignments, wanted, groups, group_label, used_links,
+                            exclusions, checks, manifest_hash, problems)
+    SUMMARY_FILE.write_text(summary, encoding="utf-8")
+    print(summary)
+    print(f"Files written to: {SPLITS_DIR}")
+    if not all(ok for _, ok in checks):
+        sys.exit("A check FAILED. Do not use this split. Send the summary above for help.")
+
+
+if __name__ == "__main__":
+    main()
+but i have not created the model.py and train_classifier.py in code base. check them and tell if they are ready to be run or not.
