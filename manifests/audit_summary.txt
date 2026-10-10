@@ -1,0 +1,42 @@
+DATASET AUDIT SUMMARY
+============================================================
+
+Files audited          : 4371
+  source (PlantVillage): 2550
+  target (PP2020)      : 1821
+
+Corrupted / undecodable: 0
+
+Colour modes (channels):
+  source  RGB   2550
+  target  RGB   1821
+
+Image size (width x height) range:
+  source  width 256-256, height 256-256
+  target  width 1365-2048, height 1365-2048
+
+Source class counts vs paper:
+  healthy              found  1645   paper  1645   OK
+  scab                 found   630   paper   630   OK
+  rust                 found   275   paper   275   OK
+
+Target class counts vs paper:
+  healthy              found   516   paper   516   OK
+  scab                 found   592   paper   592   OK
+  rust                 found   622   paper   622   OK
+  multiple_diseases    found    91   paper    91   OK
+
+Exact duplicates (same SHA-256):
+  within_source: 7 groups, 14 files
+  within_target: 1 groups, 2 files
+
+Near-duplicate candidates (pHash distance <= 5):
+  19 pairs (exact-duplicate pairs excluded from this count)
+  of which across source and target: 0
+  of which with different labels: 0
+
+Other problems:
+  none
+
+NEXT: review near_duplicate_candidates.csv by eye and decide which
+pairs are real duplicates. Nothing has been deleted.

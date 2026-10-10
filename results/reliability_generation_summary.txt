@@ -1,0 +1,51 @@
+SOURCE-ONLY RELIABILITY DATA GENERATION SUMMARY
+==========================================================
+
+Seed for secondary split and per-view random recipes: 42
+Original S-reliability images: 383
+Generated view records: 1915
+Views per original: original, brightness, contrast, gaussian_blur, gaussian_noise
+Disease classifier training: NOT performed
+Failure-head training: NOT performed
+PP2020 target data: NOT read or used
+
+Secondary split by class (original images):
+  healthy: train=197, validation=50, total=247
+  scab: train=76, validation=19, total=95
+  rust: train=33, validation=8, total=41
+
+Failure labels are view-level: 1 = frozen classifier wrong; 0 = correct.
+Positive counts include related views of the same original and are not independent images.
+
+Seed 42:
+  reliability_train: views=1530, positive failures=31, non-failures=1499, originals with >=1 failure=13
+  WARNING: fewer than 50 positive training views; do not silently change perturbation severity. Revisit the protocol before head training.
+  reliability_val: views=385, positive failures=6, non-failures=379, originals with >=1 failure=2
+  Positive failures by view type:
+    original: 6/383
+    brightness: 8/383
+    contrast: 6/383
+    gaussian_blur: 11/383
+    gaussian_noise: 6/383
+
+Seed 123:
+  reliability_train: views=1530, positive failures=29, non-failures=1501, originals with >=1 failure=11
+  WARNING: fewer than 50 positive training views; do not silently change perturbation severity. Revisit the protocol before head training.
+  reliability_val: views=385, positive failures=6, non-failures=379, originals with >=1 failure=3
+  Positive failures by view type:
+    original: 6/383
+    brightness: 6/383
+    contrast: 6/383
+    gaussian_blur: 12/383
+    gaussian_noise: 5/383
+
+Seed 2026:
+  reliability_train: views=1530, positive failures=27, non-failures=1503, originals with >=1 failure=14
+  WARNING: fewer than 50 positive training views; do not silently change perturbation severity. Revisit the protocol before head training.
+  reliability_val: views=385, positive failures=8, non-failures=377, originals with >=1 failure=5
+  Positive failures by view type:
+    original: 4/383
+    brightness: 6/383
+    contrast: 4/383
+    gaussian_blur: 16/383
+    gaussian_noise: 5/383

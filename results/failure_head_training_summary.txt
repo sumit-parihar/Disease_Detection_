@@ -1,0 +1,51 @@
+SOURCE-ONLY FAILURE-HEAD TRAINING SUMMARY
+==========================================================
+Device: cuda
+Disease classifier training: NOT performed
+S-test: NOT loaded or used
+S-calibration: NOT loaded or used
+PP2020 target data: NOT loaded or used
+Failure-head architecture: Dense(64, ReLU) -> Dropout(0.30) -> one failure logit
+Input: 579 values (576 features + 3 raw logits)
+Loss: BCEWithLogitsLoss with positive weight min(5, train negatives / train positives)
+Hidden-kernel L2 coefficient: 0.0001
+Optimizer: Adam; learning rate=0.0005; batch size=64
+Maximum epochs=30; early-stopping patience=5
+Checkpoint selection: strict improvement in validation AUPRC-error; ties retain the earliest best epoch.
+Validation AUPRC is view-level and may be unstable because views of an original image are correlated.
+
+Seed 42:
+  Selected epoch: 23 / 28 epochs run
+  Best validation AUPRC-error: 0.10178385
+  Training views: 3978; positive=95; negative=3883
+  Training originals: 306; originals with >=1 failure=24
+  Validation views: 1001; positive=22
+  Validation originals: 77; originals with >=1 failure=5
+  Positive-class weight: 5
+  Checkpoint: D:\Capstone Project\Capstone Project\models\failure_head_seed42.pt
+  History: D:\Capstone Project\Capstone Project\results\failure_head_history_seed42.csv
+  Validation predictions: D:\Capstone Project\Capstone Project\results\failure_head_val_predictions_seed42.csv
+
+Seed 123:
+  Selected epoch: 1 / 6 epochs run
+  Best validation AUPRC-error: 0.04880750
+  Training views: 3978; positive=77; negative=3901
+  Training originals: 306; originals with >=1 failure=20
+  Validation views: 1001; positive=22
+  Validation originals: 77; originals with >=1 failure=6
+  Positive-class weight: 5
+  Checkpoint: D:\Capstone Project\Capstone Project\models\failure_head_seed123.pt
+  History: D:\Capstone Project\Capstone Project\results\failure_head_history_seed123.csv
+  Validation predictions: D:\Capstone Project\Capstone Project\results\failure_head_val_predictions_seed123.csv
+
+Seed 2026:
+  Selected epoch: 1 / 6 epochs run
+  Best validation AUPRC-error: 0.05473582
+  Training views: 3978; positive=74; negative=3904
+  Training originals: 306; originals with >=1 failure=21
+  Validation views: 1001; positive=23
+  Validation originals: 77; originals with >=1 failure=8
+  Positive-class weight: 5
+  Checkpoint: D:\Capstone Project\Capstone Project\models\failure_head_seed2026.pt
+  History: D:\Capstone Project\Capstone Project\results\failure_head_history_seed2026.csv
+  Validation predictions: D:\Capstone Project\Capstone Project\results\failure_head_val_predictions_seed2026.csv

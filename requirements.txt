@@ -2,7 +2,7 @@
 # PyTorch (torch, torchvision) is NOT listed here on purpose. It must be
 # installed separately with the GPU (CUDA) build, see the setup steps.
 numpy
-pandas
+pandas<3
 pillow
 scikit-learn
 scipy

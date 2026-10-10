@@ -1,0 +1,3 @@
+pair_id,phash_distance,scope,path_a,path_b,label_a,label_b,same_label,already_reviewed,dataset_a,dataset_b,pixel_diff,decision
+201,8,target-target,data/pp2020/images/Train_1731.jpg,data/pp2020/images/Train_591.jpg,healthy,healthy,TRUE,FALSE,target,target,14.54589844,duplicate
+202,10,target-target,data/pp2020/images/Train_1336.jpg,data/pp2020/images/Train_332.jpg,scab,scab,TRUE,FALSE,target,target,14.68432617,duplicate

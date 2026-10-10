@@ -1,0 +1,33 @@
+SPLIT SUMMARY
+============================================================
+
+Seed                    : 42
+Manifest SHA-256 used   : d0aabb245d6993e840d43ab2cad4f798a3d3360825a7b53e8a69c420b7268b73
+Source images split     : 2550
+Source images excluded  : 0 (see source_exclusions.csv)
+Groups                  : 2537 (13 with more than one image, 26 images in them)
+Links used for grouping : 13
+    exact SHA-256 copy           7
+    sweep_review                 6
+
+Images per subset and class (actual / target):
+  subset                  healthy            scab            rust     total
+  s_train               823 / 823       315 / 315       138 / 138      1276
+  s_val                 164 / 164         63 / 63         28 / 28       255
+  s_reliability         247 / 247         95 / 95         41 / 41       383
+  s_calibration         164 / 164         63 / 63         27 / 27       254
+  s_test                247 / 247         94 / 94         41 / 41       382
+
+  s_train          50.0%  (paper: 50%)
+  s_val            10.0%  (paper: 10%)
+  s_reliability    15.0%  (paper: 15%)
+  s_calibration    10.0%  (paper: 10%)
+  s_test           15.0%  (paper: 15%)
+
+Checks:
+  PASS  every source image in the pool has exactly one subset
+  PASS  no group is split across subsets
+  PASS  every duplicate pair (exact + reviewed) is in one subset
+
+Notes:
+  none

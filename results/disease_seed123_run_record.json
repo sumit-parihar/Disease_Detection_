@@ -1,0 +1,57 @@
+{
+  "seed": 123,
+  "phase_run": "both",
+  "device": "cuda",
+  "gpu": "NVIDIA GeForce RTX 3050 Laptop GPU",
+  "peak_gpu_memory_gb": 0.14,
+  "pretrained_imagenet_weights": true,
+  "batch_size": 32,
+  "eval_batch_size": 32,
+  "class_weights": {
+    "healthy": 0.516808,
+    "scab": 1.350265,
+    "rust": 3.082126
+  },
+  "train_images": 1276,
+  "val_images": 255,
+  "parameters": {
+    "mobilenet_part": 927008,
+    "output_layer": 1731,
+    "classifier_total": 928739,
+    "batchnorm_running_statistics": 12112
+  },
+  "manifest_sha256": "d0aabb245d6993e840d43ab2cad4f798a3d3360825a7b53e8a69c420b7268b73",
+  "split_sha256": "d59a80cce32c84ed32d9fc6ef5c5d870082933cc8892c757184d16d4052a6401",
+  "versions": {
+    "python": "3.11.9",
+    "torch": "2.11.0+cu128",
+    "torchvision": "0.26.0+cu128",
+    "scikit_learn": "1.9.1",
+    "numpy": "2.4.6",
+    "pandas": "2.3.3"
+  },
+  "results": {
+    "phase_a": {
+      "best_epoch": 12,
+      "monitor": "val_loss",
+      "best_value": 0.10254080009668601,
+      "epochs_run": 12,
+      "seconds": 72.2,
+      "val_accuracy": 0.9921568627450981,
+      "val_macro_f1": 0.9926764743837914,
+      "val_loss": 0.10254080009668601,
+      "trainable_parameters": 1731
+    },
+    "phase_b": {
+      "best_epoch": 4,
+      "monitor": "val_macro_f1",
+      "best_value": 1.0,
+      "epochs_run": 9,
+      "seconds": 50.6,
+      "val_accuracy": 1.0,
+      "val_macro_f1": 1.0,
+      "val_loss": 0.02089530800784771,
+      "trainable_parameters": 730731
+    }
+  }
+}

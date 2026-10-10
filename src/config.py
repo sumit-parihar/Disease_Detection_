@@ -108,6 +108,34 @@ FAILURE_POS_WEIGHT_CAP = 5  # cap on the error-class weight in the loss
 # Source-selected coverage levels used to test threshold transfer (RQ4).
 COVERAGE_LEVELS = [0.80, 0.90]
 
+# ---------------------------------------------------------------------------
+# 6. DATASET AUDIT (paper, Section 3.3)
+# ---------------------------------------------------------------------------
+# Two images whose 64-bit pHash differ in at most this many bits are listed as
+# a near-duplicate CANDIDATE. The paper does not give a number. 5 is a common
+# choice; we fix it before looking at any result. Candidates are only listed
+# for manual review, nothing is deleted automatically.
+PHASH_MAX_DISTANCE = 5
+
+# ---------------------------------------------------------------------------
+# 7. TRAINING HARDWARE SETTING
+# ---------------------------------------------------------------------------
+# The paper does not fix the batch size. 32 is chosen for a 4 GB GPU (RTX 3050)
+# and is decided on hardware limits only, before any target result. If a run
+# fails with "CUDA out of memory", halve it (16) and note that in PROJECT_LOG.md.
+BATCH_SIZE = 32
+EVAL_BATCH_SIZE = 32
+
+# Phase A: Adam
+PHASE_A_LR = 1e-3
+PHASE_A_MAX_EPOCHS = 12
+PHASE_A_PATIENCE = 3
+
+# Phase B: AdamW
+PHASE_B_LR = 3e-5
+PHASE_B_MAX_EPOCHS = 20
+PHASE_B_PATIENCE = 5
+PHASE_B_WEIGHT_DECAY = 1e-5
 
 def make_folders():
     """Create the output folders if they do not exist yet.

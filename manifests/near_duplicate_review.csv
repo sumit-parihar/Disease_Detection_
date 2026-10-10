@@ -1,0 +1,20 @@
+pair_id,path_a,path_b,dataset_a,dataset_b,label_a,label_b,phash_distance,same_sha256,same_label,pixel_diff,decision
+1,data/pp2020/images/Train_592.jpg,data/pp2020/images/Train_782.jpg,target,target,healthy,healthy,0,FALSE,TRUE,5.406738281,duplicate
+2,data/pp2020/images/Train_1661.jpg,data/pp2020/images/Train_815.jpg,target,target,healthy,healthy,0,FALSE,TRUE,6.004394531,duplicate
+3,data/pp2020/images/Train_174.jpg,data/pp2020/images/Train_1817.jpg,target,target,healthy,healthy,2,FALSE,TRUE,6.459472656,duplicate
+4,data/pp2020/images/Train_341.jpg,data/pp2020/images/Train_763.jpg,target,target,rust,rust,2,FALSE,TRUE,7.689697266,duplicate
+5,data/pp2020/images/Train_1587.jpg,data/pp2020/images/Train_1593.jpg,target,target,healthy,healthy,2,FALSE,TRUE,7.887207031,duplicate
+6,data/pp2020/images/Train_162.jpg,data/pp2020/images/Train_356.jpg,target,target,healthy,healthy,2,FALSE,TRUE,9.234130859,duplicate
+7,data/pp2020/images/Train_1678.jpg,data/pp2020/images/Train_931.jpg,target,target,rust,rust,2,FALSE,TRUE,9.406738281,duplicate
+8,data/pp2020/images/Train_1634.jpg,data/pp2020/images/Train_921.jpg,target,target,healthy,healthy,2,FALSE,TRUE,12.21313477,duplicate
+9,data/pp2020/images/Train_1150.jpg,data/pp2020/images/Train_1365.jpg,target,target,rust,rust,2,FALSE,TRUE,14.29345703,duplicate
+10,data/pp2020/images/Train_1115.jpg,data/pp2020/images/Train_1683.jpg,target,target,healthy,healthy,4,FALSE,TRUE,5.834716797,duplicate
+11,data/pp2020/images/Train_1581.jpg,data/pp2020/images/Train_1613.jpg,target,target,rust,rust,4,FALSE,TRUE,7.187011719,duplicate
+12,data/pp2020/images/Train_1392.jpg,data/pp2020/images/Train_438.jpg,target,target,healthy,healthy,4,FALSE,TRUE,8.853027344,duplicate
+13,data/pp2020/images/Train_1675.jpg,data/pp2020/images/Train_417.jpg,target,target,healthy,healthy,4,FALSE,TRUE,10.87890625,duplicate
+14,data/pp2020/images/Train_909.jpg,data/pp2020/images/Train_914.jpg,target,target,healthy,healthy,4,FALSE,TRUE,11.06835938,duplicate
+15,data/pp2020/images/Train_759.jpg,data/pp2020/images/Train_828.jpg,target,target,rust,rust,4,FALSE,TRUE,12.29736328,duplicate
+16,data/pp2020/images/Train_665.jpg,data/pp2020/images/Train_694.jpg,target,target,healthy,healthy,4,FALSE,TRUE,13.98120117,duplicate
+17,data/plantvillage/raw/color/Apple___healthy/946b311a-cb67-46d4-8c8b-0d91ebd456f3___RS_HL 5809.JPG,data/plantvillage/raw/color/Apple___healthy/b6808ea5-f26b-49fa-87b2-a1bbbc98d74c___RS_HL 6095.JPG,source,source,healthy,healthy,4,FALSE,TRUE,21.72216797,different
+18,data/plantvillage/raw/color/Apple___healthy/298c8daf-43cc-4f65-b2db-65623425e5f8___RS_HL 6103.JPG,data/plantvillage/raw/color/Apple___healthy/9fc6acc1-0394-498d-b51c-d2e92febae55___RS_HL 6013.JPG,source,source,healthy,healthy,4,FALSE,TRUE,22.66552734,different
+19,data/plantvillage/raw/color/Apple___healthy/375f1e44-235c-4ef0-a156-077b71abeed3___RS_HL 8162.JPG,data/plantvillage/raw/color/Apple___healthy/abc9f5f6-ea98-46c0-8df7-2986969318bf___RS_HL 5928.JPG,source,source,healthy,healthy,4,FALSE,TRUE,36.58544922,different

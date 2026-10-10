@@ -1,0 +1,55 @@
+SOURCE-ONLY RELIABILITY DATA GENERATION SUMMARY (V2)
+==============================================================
+
+Seed for per-view random recipes: 42
+Original S-reliability images: 383
+Views per original: 13
+Generated view records: 4979
+View recipe: 1 original + 3 brightness + 3 contrast + 3 gaussian_blur + 3 gaussian_noise
+Brightness factor range: (0.7, 1.3)
+Contrast factor range: (0.7, 1.3)
+Gaussian blur sigma range: (0.5, 1.5)
+Gaussian noise sigma range (normalized space): (0.01, 0.05)
+Original source split SHA-256: d59a80cce32c84ed32d9fc6ef5c5d870082933cc8892c757184d16d4052a6401
+Existing secondary split SHA-256: 22176564730e81a7967bba8c821debb8e6c8bbc97e0d713c4eee38d8c5388a7d
+Existing secondary split was reused unchanged: YES
+Disease classifier training: NOT performed
+Failure-head training: NOT performed
+PP2020 target data: NOT read or used
+Original image and all its views stay in the same reliability portion: CHECKED
+Positive counts include correlated views and are not independent image counts.
+
+Secondary split by original image:
+  healthy: train=197, validation=50, total=247
+  scab: train=76, validation=19, total=95
+  rust: train=33, validation=8, total=41
+
+Seed 42:
+  reliability_train: views=3978, positive failures=95, non-failures=3883, originals with >=1 failure=24
+  reliability_val: views=1001, positive failures=22, non-failures=979, originals with >=1 failure=5
+  Failure counts by view type (train / validation):
+    original: 5/306 / 1/77
+    brightness: 16/918 / 3/231
+    contrast: 18/918 / 3/231
+    gaussian_blur: 39/918 / 12/231
+    gaussian_noise: 17/918 / 3/231
+
+Seed 123:
+  reliability_train: views=3978, positive failures=77, non-failures=3901, originals with >=1 failure=20
+  reliability_val: views=1001, positive failures=22, non-failures=979, originals with >=1 failure=6
+  Failure counts by view type (train / validation):
+    original: 5/306 / 1/77
+    brightness: 13/918 / 3/231
+    contrast: 13/918 / 3/231
+    gaussian_blur: 34/918 / 12/231
+    gaussian_noise: 12/918 / 3/231
+
+Seed 2026:
+  reliability_train: views=3978, positive failures=74, non-failures=3904, originals with >=1 failure=21
+  reliability_val: views=1001, positive failures=23, non-failures=978, originals with >=1 failure=8
+  Failure counts by view type (train / validation):
+    original: 3/306 / 1/77
+    brightness: 11/918 / 3/231
+    contrast: 13/918 / 3/231
+    gaussian_blur: 35/918 / 13/231
+    gaussian_noise: 12/918 / 3/231

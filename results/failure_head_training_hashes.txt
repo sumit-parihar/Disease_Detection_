@@ -1,0 +1,17 @@
+FAILURE-HEAD TRAINING INPUT/OUTPUT SHA-256
+==========================================================
+INPUT a679e80d993737a93ccf83a923ddd2e5661102a32b5a8c360f3cae6f0f7b999a  D:/Capstone Project/Capstone Project/results/reliability_v2_features_seed42.npz
+INPUT 767d4ae0b7490c0411387106ba3d5f9e792a6f291587450f4b97c54b5c9c6b42  D:/Capstone Project/Capstone Project/results/reliability_v2_predictions_seed42.csv
+INPUT 57aff68867da56a33194e734f5d0096bb464f34591bc2208feec05c79c5ba3ce  D:/Capstone Project/Capstone Project/results/reliability_v2_features_seed123.npz
+INPUT 035b52a1736f1c69ac51b2fced8c63f2169183e43a9d7f99f7bef3d96672c4ee  D:/Capstone Project/Capstone Project/results/reliability_v2_predictions_seed123.csv
+INPUT 429f4908168e0f98cbd23af6f3e25e3cdb0b4a912c08b3b5e2cecd38f1035df1  D:/Capstone Project/Capstone Project/results/reliability_v2_features_seed2026.npz
+INPUT b33929e5387137a8bc85931fcecd756b0970ad46579637f313d08954a8b669b5  D:/Capstone Project/Capstone Project/results/reliability_v2_predictions_seed2026.csv
+OUTPUT 87536cca7b1bd6bc628347459d3e78501d2812ed75fb40938e17d8156cb71f29  D:/Capstone Project/Capstone Project/models/failure_head_seed42.pt
+OUTPUT 47e8f9d6b08a23daa9fe51cc153dccc309640322a5e0f3944ab5b38d856efa90  D:/Capstone Project/Capstone Project/results/failure_head_history_seed42.csv
+OUTPUT 26119b9c5a1bb89013a58dd35484107275ca6a24df6461ecfa1548683f9d5591  D:/Capstone Project/Capstone Project/results/failure_head_val_predictions_seed42.csv
+OUTPUT 949ba9a8bbdaa8cff3547bd06e2ff2473f8c691b4635aa551f4587f0cd71133c  D:/Capstone Project/Capstone Project/models/failure_head_seed123.pt
+OUTPUT 01b2c9f8c586417c35d5ac672e3d8d001e2575d16e46035725504b57cdbea179  D:/Capstone Project/Capstone Project/results/failure_head_history_seed123.csv
+OUTPUT b913a7633f7d221267d9a2520639997f1704b8e1288a1bbb572ef4accab56d35  D:/Capstone Project/Capstone Project/results/failure_head_val_predictions_seed123.csv
+OUTPUT aa18a806f0b1e324a267a86b4ed0e5cab4e1280c7ffced4b55a2eb0f5d8045ca  D:/Capstone Project/Capstone Project/models/failure_head_seed2026.pt
+OUTPUT 7fc6ba9d4cd3412a77880c0d02f046e6cf9322fe044a14ea2cbab326fab8b255  D:/Capstone Project/Capstone Project/results/failure_head_history_seed2026.csv
+OUTPUT 35cb30fc7dc1572e7ccd7f7a3b509c2d5c5a405bf59cdacd8021e9c3a58aa614  D:/Capstone Project/Capstone Project/results/failure_head_val_predictions_seed2026.csv
