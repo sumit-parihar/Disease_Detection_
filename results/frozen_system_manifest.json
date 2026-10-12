@@ -1,0 +1,57 @@
+{
+  "created_utc": "2026-10-12T19:28:46+00:00",
+  "purpose": "Freeze of the full system before any S-test or target evaluation",
+  "classifier_seeds": [
+    42,
+    123,
+    2026
+  ],
+  "git": {
+    "commit": "67f05ff437aa6e91877fa728302bf78ff74233e9",
+    "uncommitted_changes": true,
+    "uncommitted_file_count": 1
+  },
+  "libraries": {
+    "python": "3.11.9",
+    "platform": "Windows-10-10.0.26200-SP0",
+    "torch": "2.11.0+cu128",
+    "torchvision": "0.26.0+cu128",
+    "numpy": "2.4.6",
+    "pandas": "2.3.3",
+    "sklearn": "1.9.1",
+    "PIL": "12.3.0"
+  },
+  "files": {
+    "splits/split_assignments.csv": "d59a80cce32c84ed32d9fc6ef5c5d870082933cc8892c757184d16d4052a6401",
+    "manifests/manifest.csv": "d0aabb245d6993e840d43ab2cad4f798a3d3360825a7b53e8a69c420b7268b73",
+    "results/frozen_calibration_settings.json": "5d100dcffe7ecf31baaf7167b85e8d7e527d698b4d8d3d6952feff8cd7179644",
+    "results/temperature_scaling.csv": "5c43e18ae1f23cc5b54562daa629365a12041872b93923584774195bdf18147d",
+    "results/calibration_thresholds.csv": "265051fb8eec9e3f94d8f53c5fb63a67248de52ac2005d6beec5b862eb00c8ea",
+    "models/disease_seed42_phaseB.pt": "7f7b4eebaf838d016545b4c8aa4744785a98731ce7611aaed2b97e2fee43b672",
+    "models/failure_head_scaled_seed42.pt": "f4564d895cb013d48930392294d173cc49dd025eecec11bab0521b004ca49df0",
+    "models/failure_head_scaled_logits_only_seed42.pt": "3afa347b7dae811ddd31337cd4e18739119b800f434d4d617396a3f09d1f6f1e",
+    "models/failure_head_scaled_features_only_seed42.pt": "8183323bbc6bd012042439a3e10b30a2b0def88fe8b5b605c801b5c2863ce2ff",
+    "results/s_calibration_outputs_seed42.csv": "bf7c180bfc874c1355e974dd4a73b579177f5468d46bc819b26041ee2432d4c1",
+    "models/disease_seed123_phaseB.pt": "c62340bf9667d43bdb4eaa5219408d5a79eb4acc7ed2179c78e04ad9bf4e2133",
+    "models/failure_head_scaled_seed123.pt": "8fb471fad47e690150eb72d87b2d355174d3b8bf869e7c4c039e687a5d7296d8",
+    "models/failure_head_scaled_logits_only_seed123.pt": "03219268190db3cce80077dc40975c0ebcc3467332929913e772f4e8408c8380",
+    "models/failure_head_scaled_features_only_seed123.pt": "663baded35a03396c95c13c76ce17a0c7c16fc19069dee4864fe3392b593f051",
+    "results/s_calibration_outputs_seed123.csv": "d2bb86761f15c496a61eeb51ffa18db9449ea843a6d03a138d4cb3ec7e682e9b",
+    "models/disease_seed2026_phaseB.pt": "e87011d6c957a7448e70ee8992c3a858d97cd556d71fa365f678bf1f2f8d68b3",
+    "models/failure_head_scaled_seed2026.pt": "bb4d213c98c01d75c96f63ea0dab218d6b492b734701bc4be41ffb1223578cae",
+    "models/failure_head_scaled_logits_only_seed2026.pt": "7df2a251cbb8dd0100eda602a5e7383df0bd6d66229b8feb39a221d1ce8addfd",
+    "models/failure_head_scaled_features_only_seed2026.pt": "ae5a5917b1d22a61574a6455ddc0d7a528fb34ca8d9ce52d667d6d45f9942742",
+    "results/s_calibration_outputs_seed2026.csv": "9a7d3a744d60f630b887c5d1059964420f5cebb25b58b0a9d2da95d7c8fa476c",
+    "src/config.py": "cd1a439e579bca6272fbd03c5d3a5d750a94f1e8f42e34a9b4552da61e16b942",
+    "src/dataset.py": "4c0c5172b60b376ec2f63e95ace5bba07775a08a583e09ac69e9e56b0d761bf7",
+    "src/model.py": "e16a6b188da61a4dbfba73a5022e15646bf554c30a0796ce665ca99f80da6934",
+    "src/frozen_pipeline.py": "c3e6cbc9e9cb72ad55766066ef73f75eefe6fab42e4263439d38f57e0c6ea3f3",
+    "src/failure_head_diagnostic.py": "b90bf81f5e7c8727b5dc0712b2d3aa8ded9d7b98426dbe3584749af36bf3222a",
+    "src/train_failure_head.py": "667fedc82463d23de08dc6fb1b66cd743dc0597db9a987412e77a896f7b1521d",
+    "src/retrain_failure_head.py": "3156c764591a0e67491268a2758f25c37b356128088fe74edf8a0a7890d04e7e",
+    "src/train_ablation_heads.py": "cd023680d31519c5ce8523b661061a140ec5c3ee948427d736b002826f382bb7",
+    "src/extract_calibration_outputs.py": "0d1dc445362376edea2e3f38e7dd4cdb1f4f1162476db0472ed1273d309bdb18",
+    "src/calibrate_and_thresholds.py": "a59d30d7125fe57a3ad3403d66ff8f6a96a3de3f9bde114dcd88dde41cbd805c",
+    "src/metrics.py": "d70d8b4515d722ce15813e4a1ed27e5507e83a90f65e861699f75583835a4fcf"
+  }
+}
