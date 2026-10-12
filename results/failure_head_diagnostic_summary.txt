@@ -1,0 +1,71 @@
+FAILURE-HEAD DIAGNOSTIC (source reliability-validation views only; no target data)
+==============================================================================
+
+AUPRC-error, with 95% interval from resampling original images. Higher is better.
+Chance level = share of failed views.
+
+Classifier seed 42: 1001 views, 22 failed views, 77 original images, chance AUPRC 0.022
+  (saved failure head from train_failure_head.py: AUPRC 0.102)
+  method          inputs           recipe                             AUPRC [95% interval]        AUROC  epoch
+  MSP             logits           none                               0.336 [0.140-0.708]        0.960       
+  Entropy         logits           none                               0.311 [0.153-0.844]        0.958       
+  Margin          logits           none                               0.353 [0.139-0.733]        0.962       
+  LogReg-logits   logits           none                               0.028 [0.003-0.075]        0.599       
+  Small head      logits only      A: raw inputs, early stopping      0.427 [0.010-1.000]        0.917     30
+  Small head      logits only      B: standardised, fixed 30 epochs   0.404 [0.007-0.991]        0.897     30
+  Small head      features only    A: raw inputs, early stopping      0.037 [0.009-0.221]        0.472      1
+  Small head      features only    B: standardised, fixed 30 epochs   0.147 [0.011-0.540]        0.861     30
+  Small head      features+logits  A: raw inputs, early stopping      0.106 [0.018-0.619]        0.478     10
+  Small head      features+logits  B: standardised, fixed 30 epochs   0.147 [0.009-0.625]        0.832     30
+
+Classifier seed 123: 1001 views, 22 failed views, 77 original images, chance AUPRC 0.022
+  (saved failure head from train_failure_head.py: AUPRC 0.049)
+  method          inputs           recipe                             AUPRC [95% interval]        AUROC  epoch
+  MSP             logits           none                               0.467 [0.270-0.837]        0.978       
+  Entropy         logits           none                               0.418 [0.214-0.744]        0.976       
+  Margin          logits           none                               0.481 [0.292-0.808]        0.979       
+  LogReg-logits   logits           none                               0.027 [0.006-0.080]        0.587       
+  Small head      logits only      A: raw inputs, early stopping      0.486 [0.029-0.860]        0.939     18
+  Small head      logits only      B: standardised, fixed 30 epochs   0.351 [0.026-0.685]        0.926     30
+  Small head      features only    A: raw inputs, early stopping      0.073 [0.014-0.451]        0.504      1
+  Small head      features only    B: standardised, fixed 30 epochs   0.137 [0.040-0.535]        0.858     30
+  Small head      features+logits  A: raw inputs, early stopping      0.052 [0.012-0.361]        0.423      1
+  Small head      features+logits  B: standardised, fixed 30 epochs   0.153 [0.054-0.497]        0.881     30
+
+Classifier seed 2026: 1001 views, 23 failed views, 77 original images, chance AUPRC 0.023
+  (saved failure head from train_failure_head.py: AUPRC 0.055)
+  method          inputs           recipe                             AUPRC [95% interval]        AUROC  epoch
+  MSP             logits           none                               0.372 [0.274-0.601]        0.975       
+  Entropy         logits           none                               0.352 [0.203-0.565]        0.970       
+  Margin          logits           none                               0.372 [0.237-0.603]        0.976       
+  LogReg-logits   logits           none                               0.034 [0.007-0.103]        0.640       
+  Small head      logits only      A: raw inputs, early stopping      0.432 [0.011-0.741]        0.864     30
+  Small head      logits only      B: standardised, fixed 30 epochs   0.332 [0.013-0.644]        0.848     30
+  Small head      features only    A: raw inputs, early stopping      0.056 [0.015-0.281]        0.496      1
+  Small head      features only    B: standardised, fixed 30 epochs   0.160 [0.055-0.520]        0.823     30
+  Small head      features+logits  A: raw inputs, early stopping      0.061 [0.018-0.335]        0.511      1
+  Small head      features+logits  B: standardised, fixed 30 epochs   0.167 [0.072-0.564]        0.852     30
+
+MEAN OVER THE THREE CLASSIFIER SEEDS
+  method          inputs           recipe                                AUPRC   AUROC
+  MSP             logits           none                                  0.392   0.971
+  Entropy         logits           none                                  0.360   0.968
+  Margin          logits           none                                  0.402   0.972
+  LogReg-logits   logits           none                                  0.029   0.609
+  Small head      logits only      A: raw inputs, early stopping         0.448   0.907
+  Small head      logits only      B: standardised, fixed 30 epochs      0.363   0.890
+  Small head      features only    A: raw inputs, early stopping         0.055   0.491
+  Small head      features only    B: standardised, fixed 30 epochs      0.148   0.847
+  Small head      features+logits  A: raw inputs, early stopping         0.073   0.470
+  Small head      features+logits  B: standardised, fixed 30 epochs      0.156   0.855
+
+READING GUIDE
+  - If 'logits only' reaches about the MSP level but 'features only' or 'features+logits' is far lower,
+    the 576 image features are what holds the head back.
+  - If recipe B (standardised, fixed epochs) is clearly better than recipe A for the same inputs,
+    the input scaling or the early-stopping rule was part of the problem.
+  - If no learned row beats MSP, the learned head has no advantage on source data. Report that.
+  - LogReg-logits is a straight-line model of the 3 logits. It cannot express 'largest minus second
+    largest', so it is expected to score below MSP. The small head on logits can express it.
+  - The validation set holds only a handful of failing original images, so the intervals are wide.
+    Do not choose a final head from this table without writing the choice down first.

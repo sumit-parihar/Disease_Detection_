@@ -1,0 +1,47 @@
+CALIBRATION AND CUT-OFFS (fitted on S-calibration only)
+======================================================================
+
+TEMPERATURE SCALING (one number per classifier seed)
+  seed    wrong  temperature      95% interval  NLL before  NLL after  ECE before  ECE after
+  42          2        0.386       [0.05-0.56]      0.0349     0.0172      0.0238     0.0093
+  123         1        0.476       [0.05-0.71]      0.0242     0.0135      0.0148     0.0056
+  2026        1        0.469       [0.05-0.70]      0.0321     0.0199      0.0223     0.0094
+
+  The temperature rests on very few wrong predictions, so it is uncertain (see the interval).
+  'Resamples at search limit' in temperature_scaling.csv shows how often a resample had no wrong prediction.
+
+CUT-OFFS: an image is answered when its score is at or below the cut-off.
+Same rule for every method: the k-th smallest score, k = ceil(coverage x images).
+
+Classifier seed 42
+  method                       tau80   cov80  wrong80     tau90   cov90  wrong90
+  B1 MSP                      0.0225   0.803        0    0.0670   0.902        0
+  B2 Entropy                  0.1147   0.803        0    0.2697   0.902        0
+  B3 Margin                   0.0420   0.803        0    0.1221   0.902        0
+  B4 Temp-scaled MSP          0.0000   0.803        0    0.0007   0.902        0
+  B5 Logits-only head         0.0631   0.803        0    0.1961   0.902        1
+  A1 Features-only head       0.0006   0.803        0    0.0034   0.902        0
+  P1 Proposed head            0.0005   0.803        0    0.0047   0.902        0
+
+Classifier seed 123
+  method                       tau80   cov80  wrong80     tau90   cov90  wrong90
+  B1 MSP                      0.0111   0.803        0    0.0384   0.902        0
+  B2 Entropy                  0.0627   0.803        0    0.1663   0.902        0
+  B3 Margin                   0.0215   0.803        0    0.0765   0.902        0
+  B4 Temp-scaled MSP          0.0001   0.803        0    0.0011   0.902        0
+  B5 Logits-only head         0.0451   0.803        1    0.1241   0.902        1
+  A1 Features-only head       0.0002   0.803        0    0.0010   0.902        1
+  P1 Proposed head            0.0002   0.803        0    0.0013   0.902        1
+
+Classifier seed 2026
+  method                       tau80   cov80  wrong80     tau90   cov90  wrong90
+  B1 MSP                      0.0157   0.803        0    0.0577   0.902        0
+  B2 Entropy                  0.0838   0.803        0    0.2491   0.902        0
+  B3 Margin                   0.0280   0.803        0    0.1040   0.902        0
+  B4 Temp-scaled MSP          0.0001   0.803        0    0.0019   0.902        0
+  B5 Logits-only head         0.0696   0.803        1    0.1679   0.902        1
+  A1 Features-only head       0.0004   0.803        0    0.0027   0.902        0
+  P1 Proposed head            0.0003   0.803        0    0.0023   0.902        0
+
+'wrong80' / 'wrong90' = wrong predictions that are still answered on S-calibration (tiny numbers,
+so they say little). These settings are now frozen: later steps must use them unchanged.

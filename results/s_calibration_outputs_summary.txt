@@ -1,0 +1,12 @@
+S-CALIBRATION OUTPUTS OF THE FROZEN SYSTEM
+============================================================
+
+Classifier seed 42: 254 images {'healthy': 164, 'scab': 63, 'rust': 27}
+  correct 252, wrong 2, accuracy 99.21%
+Classifier seed 123: 254 images {'healthy': 164, 'scab': 63, 'rust': 27}
+  correct 253, wrong 1, accuracy 99.61%
+Classifier seed 2026: 254 images {'healthy': 164, 'scab': 63, 'rust': 27}
+  correct 253, wrong 1, accuracy 99.61%
+
+Note: temperature scaling uses the wrong predictions, so when there are only a few of them it
+is less reliable. The 80% / 90% cut-offs depend only on the ranking of the scores.

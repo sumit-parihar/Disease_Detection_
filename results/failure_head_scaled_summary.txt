@@ -1,0 +1,24 @@
+FAILURE HEAD RETRAINED WITH SCALED INPUTS AND A FIXED NUMBER OF EPOCHS
+==========================================================================
+
+Source reliability-validation views only. No target, S-test or S-calibration data were read.
+Deviations from the original protocol: (1) inputs standardised with reliability-train
+statistics; (2) fixed 30 epochs, last epoch kept, no epoch chosen on validation.
+
+seed   head AUPRC [95% interval]      head AUROC   MSP AUPRC [95% interval]      MSP AUROC  chance
+42     0.145 [0.013-0.575]                 0.828   0.336 [0.149-0.724]               0.960   0.022
+123    0.159 [0.064-0.515]                 0.892   0.467 [0.269-0.798]               0.978   0.022
+2026   0.167 [0.081-0.616]                 0.851   0.372 [0.255-0.609]               0.975   0.023
+
+Mean head AUPRC 0.157, mean MSP AUPRC 0.392
+Learnable parameters of the head: 37,185 (calculated from the design: 37,185)
+
+Per seed: training failures, validation failures, positive weight, validation loss first -> last epoch
+  seed 42: 95, 22, 5, 0.356 -> 0.758
+  seed 123: 77, 22, 5, 0.281 -> 0.735
+  seed 2026: 74, 23, 5, 0.341 -> 0.775
+
+Notes
+  - The validation set holds only 5 to 8 failing original images, so intervals are wide.
+  - These numbers are for monitoring and for the paper's source-validation table.
+    They must not be used to pick between further variants of the head.

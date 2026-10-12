@@ -1,0 +1,40 @@
+COMPARISON HEADS (same corrected recipe) AND THE PROPOSED HEAD
+==========================================================================
+
+Source reliability-validation views only. No target, S-test or S-calibration data were read.
+AUPRC-error with a 95% interval from resampling original images; higher is better.
+
+Classifier seed 42: 22 failed validation views, chance AUPRC 0.022
+  method                            AUPRC [95% interval]          AUROC
+  MSP (no training)                 0.336 [0.140-0.708]           0.960
+  logits-only head                  0.399 [0.007-0.909]           0.895
+  features-only head                0.158 [0.010-0.560]           0.854
+  proposed head (features+logits)   0.145 [0.010-0.673]           0.828
+
+Classifier seed 123: 22 failed validation views, chance AUPRC 0.022
+  method                            AUPRC [95% interval]          AUROC
+  MSP (no training)                 0.467 [0.270-0.837]           0.978
+  logits-only head                  0.352 [0.017-0.755]           0.925
+  features-only head                0.141 [0.036-0.614]           0.844
+  proposed head (features+logits)   0.159 [0.068-0.490]           0.892
+
+Classifier seed 2026: 23 failed validation views, chance AUPRC 0.023
+  method                            AUPRC [95% interval]          AUROC
+  MSP (no training)                 0.372 [0.274-0.601]           0.975
+  logits-only head                  0.325 [0.017-0.656]           0.847
+  features-only head                0.140 [0.051-0.432]           0.837
+  proposed head (features+logits)   0.167 [0.060-0.540]           0.851
+
+MEAN OVER THE THREE CLASSIFIER SEEDS
+  method                               AUPRC   AUROC
+  MSP (no training)                    0.392   0.971
+  logits-only head                     0.359   0.889
+  features-only head                   0.146   0.845
+  proposed head (features+logits)      0.157   0.857
+
+Learnable parameters: logits-only head 321; features-only head 36,993; proposed head 37,185.
+
+Notes
+  - Only 5 to 8 failing original images sit in the validation set, so intervals are wide.
+  - These numbers are for the paper's source-validation table. They must not be used
+    to pick between further variants.
