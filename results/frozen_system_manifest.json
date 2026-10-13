@@ -1,5 +1,5 @@
 {
-  "created_utc": "2026-10-12T19:28:46+00:00",
+  "created_utc": "2026-10-13T04:26:35+00:00",
   "purpose": "Freeze of the full system before any S-test or target evaluation",
   "classifier_seeds": [
     42,
@@ -7,9 +7,9 @@
     2026
   ],
   "git": {
-    "commit": "67f05ff437aa6e91877fa728302bf78ff74233e9",
+    "commit": "f45d9cc843275e27b9919a7f8a9da17c0ef4d833",
     "uncommitted_changes": true,
-    "uncommitted_file_count": 1
+    "uncommitted_file_count": 4
   },
   "libraries": {
     "python": "3.11.9",
@@ -52,6 +52,6 @@
     "src/train_ablation_heads.py": "cd023680d31519c5ce8523b661061a140ec5c3ee948427d736b002826f382bb7",
     "src/extract_calibration_outputs.py": "0d1dc445362376edea2e3f38e7dd4cdb1f4f1162476db0472ed1273d309bdb18",
     "src/calibrate_and_thresholds.py": "a59d30d7125fe57a3ad3403d66ff8f6a96a3de3f9bde114dcd88dde41cbd805c",
-    "src/metrics.py": "d70d8b4515d722ce15813e4a1ed27e5507e83a90f65e861699f75583835a4fcf"
+    "src/metrics.py": "1a87f193f04426d27f708e1fddf670eafbdac63110f151ce3ce3b1f552cec00e"
   }
 }

@@ -28,8 +28,10 @@ B. "How good is the disease classifier itself?"
 
 TIES
 ----
-If several images have the same score, they are ordered by their position in the
-file (a stable sort). Exact ties are rare.
+If several images have exactly the same score, the risk-coverage curve uses the average
+over all possible orders of those images. The result therefore does not depend on the
+order of the rows in the file. If ALL scores are equal, AURC equals the overall error
+rate (the level of a useless ranking).
 
 UNCERTAINTY
 -----------
@@ -58,12 +60,23 @@ COVERAGE_TAGS = (80, 90)
 # A. reliability measures
 # ---------------------------------------------------------------------------
 def risk_coverage_curve(errors, scores):
-    """Return (coverage, selective_risk) after answering 1, 2, ... n images."""
+    """Return (coverage, selective_risk) after answering 1, 2, ... n images.
+    Images with exactly the same score are ordered randomly: the risk at each point is the
+    AVERAGE over all possible orders of the tied images. This does not depend on the order
+    of the rows in the file. (Without ties it is the ordinary risk-coverage curve.)"""
     errors = np.asarray(errors, dtype=np.float64)
-    order = np.argsort(np.asarray(scores, dtype=np.float64), kind="stable")
-    answered = np.arange(1, len(errors) + 1)
-    risk = np.cumsum(errors[order]) / answered
-    return answered / len(errors), risk
+    scores = np.asarray(scores, dtype=np.float64)
+    n = len(errors)
+    order = np.argsort(scores, kind="stable")
+    sorted_scores, sorted_errors = scores[order], errors[order]
+    starts = np.flatnonzero(np.r_[True, sorted_scores[1:] != sorted_scores[:-1]])   # first index of each tie group
+    sizes = np.diff(np.r_[starts, n])
+    errors_in_group = np.add.reduceat(sorted_errors, starts)
+    errors_before = np.r_[0.0, np.cumsum(errors_in_group)[:-1]]
+    position_in_group = np.arange(n) - np.repeat(starts, sizes) + 1
+    expected_errors = np.repeat(errors_before, sizes) + position_in_group / np.repeat(sizes, sizes) * np.repeat(errors_in_group, sizes)
+    answered = np.arange(1, n + 1)
+    return answered / n, expected_errors / answered
 
 
 def aurc(errors, scores):
@@ -198,6 +211,14 @@ def _toy_checks():
     ok &= _check("Accuracy 0.75 and confusion matrix", summary["accuracy"] == 0.75 and summary["confusion_matrix"][0, 1] == 1)
     delta, low, high = delta_aurc(errors, good, bad, resamples=200)
     ok &= _check("Delta AURC (perfect minus worst) is negative", delta < 0)
+    tied = np.array([0.5, 0.5, 0.5, 0.5])
+    ok &= _check("All scores equal: AURC equals the error rate (0.25)", abs(aurc(errors, tied) - 0.25) < 1e-12)
+    rng = np.random.default_rng(0)
+    big_errors = (rng.random(300) < 0.1).astype(int)
+    big_scores = np.round(rng.random(300), 1)                      # many exact ties
+    shuffled = rng.permutation(300)
+    ok &= _check("With many ties, shuffling the rows does not change AURC",
+                 abs(aurc(big_errors, big_scores) - aurc(big_errors[shuffled], big_scores[shuffled])) < 1e-12)
     return ok
 
 
