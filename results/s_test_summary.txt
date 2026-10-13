@@ -1,0 +1,63 @@
+S-TEST EVALUATION OF THE FROZEN SYSTEM (run once)
+==============================================================================
+
+Original S-test images only. Frozen temperature and cut-offs; nothing was re-fitted.
+Intervals: 2,000 resamples that keep duplicate groups together.
+
+DISEASE CLASSIFICATION
+  seed    images wrong  accuracy  macro-F1 recall healthy    recall scab    recall rust
+  42         382     1    0.9974    0.9976         0.9960         1.0000         1.0000
+  123        382     1    0.9974    0.9976         0.9960         1.0000         1.0000
+  2026       382     1    0.9974    0.9976         0.9960         1.0000         1.0000
+
+CALIBRATION OF THE CLASSIFIER (frozen temperature)
+  seed    temperature  NLL before  NLL after  ECE before  ECE after
+  42            0.386      0.0246     0.0083      0.0180     0.0037
+  123           0.476      0.0152     0.0040      0.0137     0.0032
+  2026          0.469      0.0197     0.0065      0.0143     0.0048
+
+RELIABILITY (AURC: lower is better; delta AURC negative = better than MSP)
+  Classifier seed 42
+    method                       AURC         delta AURC vs MSP [95%]   AUROC   AUPRC  cov80  risk80  cov90  risk90
+    B1 MSP                    0.00003      0.00000 [0.00000, 0.00000]   0.990   0.200  0.830  0.0000  0.921  0.0000
+    B2 Entropy                0.00003     0.00000 [-0.00003, 0.00003]   0.990   0.200  0.835  0.0000  0.924  0.0000
+    B3 Margin                 0.00003    -0.00001 [-0.00004, 0.00000]   0.992   0.250  0.830  0.0000  0.919  0.0000
+    B4 Temp-scaled MSP        0.00003    -0.00001 [-0.00004, 0.00000]   0.992   0.250  0.825  0.0000  0.911  0.0000
+    B5 Logits-only head       0.00003     0.00000 [-0.00003, 0.00003]   0.990   0.200  0.814  0.0000  0.932  0.0000
+    A1 Features-only head     0.00061      0.00057 [0.00000, 0.00195]   0.795   0.013  0.804  0.0033  0.908  0.0029
+    P1 Proposed head          0.00045      0.00041 [0.00000, 0.00142]   0.845   0.017  0.819  0.0000  0.935  0.0028
+
+  Classifier seed 123
+    method                       AURC         delta AURC vs MSP [95%]   AUROC   AUPRC  cov80  risk80  cov90  risk90
+    B1 MSP                    0.00001      0.00000 [0.00000, 0.00000]   1.000   1.000  0.822  0.0000  0.914  0.0000
+    B2 Entropy                0.00001      0.00000 [0.00000, 0.00000]   1.000   1.000  0.814  0.0000  0.911  0.0000
+    B3 Margin                 0.00001      0.00000 [0.00000, 0.00000]   1.000   1.000  0.822  0.0000  0.916  0.0000
+    B4 Temp-scaled MSP        0.00001      0.00000 [0.00000, 0.00000]   1.000   1.000  0.827  0.0000  0.916  0.0000
+    B5 Logits-only head       0.00003      0.00003 [0.00000, 0.00012]   0.990   0.200  0.806  0.0000  0.919  0.0000
+    A1 Features-only head     0.00063      0.00062 [0.00000, 0.00207]   0.787   0.012  0.840  0.0031  0.914  0.0029
+    P1 Proposed head          0.00093      0.00092 [0.00000, 0.00304]   0.703   0.009  0.819  0.0032  0.919  0.0028
+
+  Classifier seed 2026
+    method                       AURC         delta AURC vs MSP [95%]   AUROC   AUPRC  cov80  risk80  cov90  risk90
+    B1 MSP                    0.00001      0.00000 [0.00000, 0.00000]   1.000   1.000  0.830  0.0000  0.924  0.0000
+    B2 Entropy                0.00002      0.00001 [0.00000, 0.00007]   0.995   0.333  0.830  0.0000  0.929  0.0000
+    B3 Margin                 0.00001      0.00000 [0.00000, 0.00000]   1.000   1.000  0.817  0.0000  0.921  0.0000
+    B4 Temp-scaled MSP        0.00001      0.00000 [0.00000, 0.00000]   1.000   1.000  0.814  0.0000  0.921  0.0000
+    B5 Logits-only head       0.00003      0.00003 [0.00000, 0.00011]   0.990   0.200  0.840  0.0000  0.932  0.0000
+    A1 Features-only head     0.00095      0.00094 [0.00000, 0.00319]   0.698   0.009  0.814  0.0032  0.924  0.0028
+    P1 Proposed head          0.00100      0.00099 [0.00000, 0.00335]   0.685   0.008  0.788  0.0033  0.929  0.0028
+
+MEAN OVER THE THREE CLASSIFIER SEEDS (the seeds share the same S-test images, so this is not three independent tests)
+    method                       AURC  delta AURC   AUROC   AUPRC
+    B1 MSP                    0.00002     0.00000   0.997   0.733
+    B2 Entropy                0.00002     0.00000   0.995   0.511
+    B3 Margin                 0.00001    -0.00000   0.997   0.750
+    B4 Temp-scaled MSP        0.00001    -0.00000   0.997   0.750
+    B5 Logits-only head       0.00003     0.00002   0.990   0.200
+    A1 Features-only head     0.00073     0.00071   0.760   0.011
+    P1 Proposed head          0.00079     0.00077   0.745   0.011
+
+Notes
+  - 'nan' means the measure is undefined (for example AUROC when no prediction was wrong).
+  - With so few wrong predictions these numbers say little about the failure heads.
+  - Nothing may be changed because of this evaluation.
