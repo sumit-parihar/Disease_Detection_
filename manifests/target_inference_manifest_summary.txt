@@ -1,0 +1,8 @@
+TARGET INFERENCE MANIFEST (label-free)
+==================================================
+
+Images listed      : 1730  (the 91 multiple_diseases images are not listed)
+Columns written    : path, sha256, cluster_id, cluster_size  (no labels)
+Clusters           : 1709  (21 with more than one image, 42 images in them)
+Links used         : {'near_duplicate_review.csv': 16, 'sweep_review.csv': 3, 'target_review.csv': 2}
+Manifest SHA-256   : 69dc708e9621ecd5adecafa1bc9836fe69a13d873015717c49ab55ae18929cac
