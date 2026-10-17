@@ -54,3 +54,7 @@ desktop.ini
 #   results/        small result tables and figures
 #   requirements.txt, download scripts
 # ---------------------------------------------------------------
+
+manifests/review 
+manifests/review_sweep 
+manifests/review_target
