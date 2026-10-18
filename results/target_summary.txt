@@ -1,0 +1,90 @@
+TARGET (PP2020) EVALUATION OF THE FROZEN SYSTEM
+======================================================================================
+
+Primary set: 1,730 images (516 healthy, 592 scab, 622 rust); multiple_diseases images were excluded before inference.
+Intervals: 2,000 resamples of repeated-photo clusters, shared by all methods and seeds.
+
+DISEASE CLASSIFICATION
+  seed     wrong  error rate  accuracy  macro-F1 recall healthy    recall scab    recall rust
+  42        1121      0.6480    0.3520    0.1915         0.0213         1.0000         0.0096
+  123       1108      0.6405    0.3595    0.2075         0.0271         0.9983         0.0273
+  2026      1107      0.6399    0.3601    0.2081         0.0310         1.0000         0.0241
+
+CONFUSION MATRICES (rows: true class, columns: predicted class)
+  seed 42
+                 healthy      scab      rust
+    healthy           11       505         0
+    scab               0       592         0
+    rust               0       616         6
+  seed 123
+                 healthy      scab      rust
+    healthy           14       499         3
+    scab               0       591         1
+    rust               0       605        17
+  seed 2026
+                 healthy      scab      rust
+    healthy           16       499         1
+    scab               0       592         0
+    rust               0       607        15
+
+CALIBRATION OF THE CLASSIFIER (frozen temperature)
+  seed     NLL before  NLL after  ECE before  ECE after  Brier before  Brier after
+  42           3.0203     7.7018      0.6049     0.6399        1.1988       1.2786
+  123          3.0086     6.2236      0.5925     0.6267        1.1848       1.2597
+  2026         2.8378     5.9309      0.5848     0.6244        1.1675       1.2538
+
+PRIMARY ENDPOINT: change in AURC of the proposed head against MSP (negative = better than MSP)
+  seed 42: +0.0871 [+0.0561, +0.1167]   (AURC 0.6184; MSP 0.5314; error rate 0.6480)
+  seed 123: +0.0025 [-0.0299, +0.0341]   (AURC 0.5360; MSP 0.5335; error rate 0.6405)
+  seed 2026: -0.0026 [-0.0327, +0.0283]   (AURC 0.5253; MSP 0.5279; error rate 0.6399)
+  mean over the three seeds: +0.0290 [-0.0018, +0.0582]
+
+RELIABILITY BY SEED (AURC lower is better; AUROC and AUPRC: higher is better)
+  Classifier seed 42   (a useless ranking has AURC = error rate = 0.6480)
+    method                      AURC            delta AURC [95%]   AUROC   AUPRC  cov80  risk80  cov90  risk90
+    B1 MSP                    0.5314  +0.0000 [+0.0000, +0.0000]   0.650   0.741  0.606   0.565  0.832   0.621
+    B2 Entropy                0.5270  -0.0044 [-0.0053, -0.0035]   0.655   0.742  0.601   0.562  0.836   0.620
+    B3 Margin                 0.5395  +0.0082 [+0.0059, +0.0102]   0.642   0.737  0.608   0.568  0.827   0.621
+    B4 Temp-scaled MSP        0.5457  +0.0144 [+0.0112, +0.0170]   0.635   0.733  0.608   0.570  0.825   0.620
+    B5 Logits-only head       0.4510  -0.0803 [-0.0990, -0.0621]   0.737   0.793  0.555   0.513  0.852   0.617
+    A1 Features-only head     0.6456  +0.1143 [+0.0838, +0.1439]   0.501   0.667  0.522   0.653  0.721   0.651
+    P1 Proposed head          0.6184  +0.0871 [+0.0561, +0.1167]   0.530   0.683  0.572   0.638  0.778   0.632
+
+  Classifier seed 123   (a useless ranking has AURC = error rate = 0.6405)
+    method                      AURC            delta AURC [95%]   AUROC   AUPRC  cov80  risk80  cov90  risk90
+    B1 MSP                    0.5335  +0.0000 [+0.0000, +0.0000]   0.631   0.707  0.428   0.534  0.703   0.592
+    B2 Entropy                0.5282  -0.0054 [-0.0064, -0.0045]   0.638   0.713  0.416   0.522  0.693   0.585
+    B3 Margin                 0.5418  +0.0082 [+0.0067, +0.0099]   0.621   0.702  0.444   0.546  0.717   0.598
+    B4 Temp-scaled MSP        0.5474  +0.0139 [+0.0116, +0.0164]   0.616   0.699  0.457   0.554  0.725   0.602
+    B5 Logits-only head       0.4206  -0.1130 [-0.1358, -0.0884]   0.771   0.813  0.504   0.458  0.788   0.578
+    A1 Features-only head     0.5366  +0.0031 [-0.0285, +0.0346]   0.614   0.717  0.693   0.609  0.821   0.619
+    P1 Proposed head          0.5360  +0.0025 [-0.0299, +0.0341]   0.615   0.716  0.613   0.586  0.811   0.618
+
+  Classifier seed 2026   (a useless ranking has AURC = error rate = 0.6399)
+    method                      AURC            delta AURC [95%]   AUROC   AUPRC  cov80  risk80  cov90  risk90
+    B1 MSP                    0.5279  +0.0000 [+0.0000, +0.0000]   0.637   0.712  0.446   0.524  0.745   0.602
+    B2 Entropy                0.5227  -0.0052 [-0.0060, -0.0044]   0.644   0.716  0.440   0.516  0.755   0.601
+    B3 Margin                 0.5358  +0.0079 [+0.0062, +0.0096]   0.629   0.706  0.431   0.532  0.737   0.603
+    B4 Temp-scaled MSP        0.5413  +0.0134 [+0.0111, +0.0159]   0.623   0.703  0.438   0.536  0.738   0.603
+    B5 Logits-only head       0.4234  -0.1045 [-0.1259, -0.0819]   0.764   0.810  0.521   0.470  0.805   0.589
+    A1 Features-only head     0.5583  +0.0304 [-0.0007, +0.0634]   0.592   0.709  0.538   0.594  0.790   0.614
+    P1 Proposed head          0.5253  -0.0026 [-0.0327, +0.0283]   0.633   0.747  0.380   0.537  0.640   0.588
+
+MEAN OVER THE THREE CLASSIFIER SEEDS (the seeds share the same images)
+    method                      AURC            delta AURC [95%]   AUROC   AUPRC
+    B1 MSP                    0.5309  +0.0000 [+0.0000, +0.0000]   0.639   0.720
+    B2 Entropy                0.5260  -0.0050 [-0.0058, -0.0042]   0.646   0.724
+    B3 Margin                 0.5390  +0.0081 [+0.0064, +0.0096]   0.631   0.715
+    B4 Temp-scaled MSP        0.5448  +0.0139 [+0.0114, +0.0162]   0.625   0.712
+    B5 Logits-only head       0.4317  -0.0992 [-0.1197, -0.0775]   0.757   0.805
+    A1 Features-only head     0.5802  +0.0492 [+0.0194, +0.0789]   0.569   0.698
+    P1 Proposed head          0.5599  +0.0290 [-0.0018, +0.0582]   0.593   0.716
+
+SECONDARY CHECK: one image per repeated-photo cluster (1709 images), change in AURC against MSP
+  seed 42, proposed head: +0.0943 [+0.0641, +0.1238]
+  seed 123, proposed head: +0.0091 [-0.0206, +0.0402]
+  seed 2026, proposed head: +0.0034 [-0.0264, +0.0338]
+
+Notes
+  - The primary analysis stops here. Anything further is exploratory and must be labelled as such.
+  - Nothing may be changed in the system, the thresholds or the analysis in response to these results.
