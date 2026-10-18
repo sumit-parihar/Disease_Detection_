@@ -1,0 +1,41 @@
+item,value,unit,device,batch_size
+classifier learnable parameters,928739.0,parameters,,
+failure head (proposed) learnable parameters,37185.0,parameters,,
+failure head (logits_only) learnable parameters,321.0,parameters,,
+failure head (features_only) learnable parameters,36993.0,parameters,,
+classifier checkpoint file,3.84,MB,,
+failure head (proposed) checkpoint file,0.156,MB,,
+failure head (logits_only) checkpoint file,0.005,MB,,
+failure head (features_only) checkpoint file,0.156,MB,,
+classifier FLOPs per image,109796608.0,FLOPs,,
+classifier MACs per image,54898304.0,MACs,,
+failure head (proposed) FLOPs per image,74240.0,FLOPs,,
+failure head (proposed) MACs per image,37120.0,MACs,,
+failure head (logits_only) FLOPs per image,512.0,FLOPs,,
+failure head (logits_only) MACs per image,256.0,MACs,,
+failure head (features_only) FLOPs per image,73856.0,FLOPs,,
+failure head (features_only) MACs per image,36928.0,MACs,,
+classifier time per image,7.5562,ms,cpu,1
+failure head (proposed) time per image,0.0646,ms,cpu,1
+proposed head extra time (share of classifier time),0.855,%,cpu,1
+classifier + proposed head time per image,7.6208,ms,cpu,1
+failure head (logits_only) time per image,0.0581,ms,cpu,1
+failure head (features_only) time per image,0.0497,ms,cpu,1
+classifier time per image,8.4953,ms,cpu,32
+failure head (proposed) time per image,0.0037,ms,cpu,32
+proposed head extra time (share of classifier time),0.043,%,cpu,32
+classifier + proposed head time per image,8.4989,ms,cpu,32
+failure head (logits_only) time per image,0.002,ms,cpu,32
+failure head (features_only) time per image,0.0032,ms,cpu,32
+classifier time per image,9.224,ms,cuda,1
+failure head (proposed) time per image,0.3381,ms,cuda,1
+proposed head extra time (share of classifier time),3.666,%,cuda,1
+classifier + proposed head time per image,9.5622,ms,cuda,1
+failure head (logits_only) time per image,0.2591,ms,cuda,1
+failure head (features_only) time per image,0.256,ms,cuda,1
+classifier time per image,0.297,ms,cuda,32
+failure head (proposed) time per image,0.0114,ms,cuda,32
+proposed head extra time (share of classifier time),3.84,%,cuda,32
+classifier + proposed head time per image,0.3084,ms,cuda,32
+failure head (logits_only) time per image,0.0106,ms,cuda,32
+failure head (features_only) time per image,0.0102,ms,cuda,32

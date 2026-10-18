@@ -1,0 +1,20 @@
+FEATURE-SHIFT ANALYSIS (EXPLORATORY: decided after the target results were known)
+================================================================================
+
+Source reference: 254 S-calibration images. Target: 1,730 images. 576 image numbers per image,
+standardised with the source mean and standard deviation.
+
+seed     centre dist. source  centre dist. target  beyond source p95  nearest dist. source  nearest dist. target  shifted >1 SD
+42                      0.96                 1.85              99.9%                 22.30                 39.33          39.6%
+123                     0.96                 1.85              99.9%                 21.91                 39.04          39.1%
+2026                    0.97                 1.81              99.9%                 22.15                 38.10          40.8%
+
+Medians; 'beyond source p95' = share of target images farther from the source mean than 95% of source images.
+
+CAN THE DISTANCE PREDICT WRONG PREDICTIONS? (AUROC on the target, 0.5 = no better than guessing)
+seed     centre dist.  nearest dist.     MSP   B5 (scores only)   P1 (proposed)
+42              0.657          0.520   0.650              0.737           0.530
+123             0.659          0.508   0.631              0.771           0.615
+2026            0.653          0.505   0.637              0.764           0.633
+
+This analysis is exploratory. It does not change any result and must be labelled exploratory in the paper.

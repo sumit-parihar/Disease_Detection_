@@ -1,0 +1,49 @@
+EFFICIENCY OF THE FROZEN SYSTEM (random input; no image or label used)
+======================================================================
+
+Python 3.11.9, PyTorch 2.11.0+cu128, CPU threads 6
+Processor: AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD
+GPU: NVIDIA GeForce RTX 3050 Laptop GPU
+
+classifier learnable parameters                                  928,739.0  parameters
+failure head (proposed) learnable parameters                      37,185.0  parameters
+failure head (logits_only) learnable parameters                      321.0  parameters
+failure head (features_only) learnable parameters                 36,993.0  parameters
+classifier checkpoint file                                            3.84  MB
+failure head (proposed) checkpoint file                              0.156  MB
+failure head (logits_only) checkpoint file                           0.005  MB
+failure head (features_only) checkpoint file                         0.156  MB
+classifier FLOPs per image                                   109,796,608.0  FLOPs
+classifier MACs per image                                     54,898,304.0  MACs
+failure head (proposed) FLOPs per image                           74,240.0  FLOPs
+failure head (proposed) MACs per image                            37,120.0  MACs
+failure head (logits_only) FLOPs per image                           512.0  FLOPs
+failure head (logits_only) MACs per image                            256.0  MACs
+failure head (features_only) FLOPs per image                      73,856.0  FLOPs
+failure head (features_only) MACs per image                       36,928.0  MACs
+classifier time per image                                           7.5562  ms  [cpu, batch 1]
+failure head (proposed) time per image                              0.0646  ms  [cpu, batch 1]
+proposed head extra time (share of classifier time)                  0.855  %  [cpu, batch 1]
+classifier + proposed head time per image                           7.6208  ms  [cpu, batch 1]
+failure head (logits_only) time per image                           0.0581  ms  [cpu, batch 1]
+failure head (features_only) time per image                         0.0497  ms  [cpu, batch 1]
+classifier time per image                                           8.4953  ms  [cpu, batch 32]
+failure head (proposed) time per image                              0.0037  ms  [cpu, batch 32]
+proposed head extra time (share of classifier time)                  0.043  %  [cpu, batch 32]
+classifier + proposed head time per image                           8.4989  ms  [cpu, batch 32]
+failure head (logits_only) time per image                            0.002  ms  [cpu, batch 32]
+failure head (features_only) time per image                         0.0032  ms  [cpu, batch 32]
+classifier time per image                                            9.224  ms  [cuda, batch 1]
+failure head (proposed) time per image                              0.3381  ms  [cuda, batch 1]
+proposed head extra time (share of classifier time)                  3.666  %  [cuda, batch 1]
+classifier + proposed head time per image                           9.5622  ms  [cuda, batch 1]
+failure head (logits_only) time per image                           0.2591  ms  [cuda, batch 1]
+failure head (features_only) time per image                          0.256  ms  [cuda, batch 1]
+classifier time per image                                            0.297  ms  [cuda, batch 32]
+failure head (proposed) time per image                              0.0114  ms  [cuda, batch 32]
+proposed head extra time (share of classifier time)                   3.84  %  [cuda, batch 32]
+classifier + proposed head time per image                           0.3084  ms  [cuda, batch 32]
+failure head (logits_only) time per image                           0.0106  ms  [cuda, batch 32]
+failure head (features_only) time per image                         0.0102  ms  [cuda, batch 32]
+
+FLOPs are counted by PyTorch for convolutions and matrix products only. Timings depend on this computer.
